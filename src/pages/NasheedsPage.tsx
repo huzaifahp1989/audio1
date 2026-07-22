@@ -3,41 +3,32 @@ import { Music2, Search, ChevronDown } from 'lucide-react'
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
 import TrackList from '../components/TrackList'
 import { NASHEED_ARTISTS } from '../constants/categories'
-import type { AudioTrack } from '../types'
+import type { AudioTrack, NasheedLanguage } from '../types'
 
 const ARABIC_CHAR = /[\u0600-\u06FF]/
 
-/** Known Arabic-language artists / traditional anasheed singers */
-const ARABIC_ARTISTS = new Set([
-  'traditional arabic',
-  'إبراهيم الماجد',
-  'ahmed bukhatir',
-  'humood',
-  'humood alkhudher',
-  'maher zain',
-  'mesut kurtis',
-  'sami yusuf',
-  'raef',
-  'hamza namira',
-  'raihan',
-  'mishary rashid alafasy',
-  'maher al-muaiqly',
-  'mohamed absolution',
-  'ahmed rajel',
-])
+export const LANGUAGE_TABS: {
+  id: NasheedLanguage | 'all'
+  label: string
+  labelNative: string
+  color: string
+  activeClass: string
+}[] = [
+  { id: 'all', label: 'All', labelNative: 'All', color: 'violet', activeClass: 'bg-violet-600 text-white shadow-md' },
+  { id: 'arabic', label: 'Arabic', labelNative: 'العربية', color: 'emerald', activeClass: 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md' },
+  { id: 'english', label: 'English', labelNative: 'English', color: 'sky', activeClass: 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-md' },
+  { id: 'urdu', label: 'Urdu', labelNative: 'اردو', color: 'amber', activeClass: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md' },
+]
 
-const ARABIC_TITLE_HINT =
-  /tal[a']?al|ya nabi|ya allah|subhan|allahu|allahumma|bismillah|qalbi|falasteen|aqsa|laytaka|walidd|ummat|hasbi|amantu|hala|marhaba|ghufran|la ilaha|inni muslim|hat al mona|nahalla|hiye daruna|ja.?al.?haq|يا |الله|سبحان|محمد|طلع|نبي|القرآن|غفران|رحمن|دارنا|الحق|منى/i
-
-function isArabicNasheed(t: AudioTrack): boolean {
-  if (t.language === 'arabic' || t.topic === 'arabic') return true
-  if (ARABIC_CHAR.test(t.title) || ARABIC_CHAR.test(t.reciter || '')) return true
-  if (ARABIC_ARTISTS.has((t.reciter || '').trim().toLowerCase()) && ARABIC_TITLE_HINT.test(t.title)) return true
-  if (ARABIC_TITLE_HINT.test(t.title) && !/urdu|\(urdu\)/i.test(t.title)) return true
-  return false
+/** Resolve a track's language category (stored field first, then light fallback). */
+export function getNasheedLanguage(t: AudioTrack): NasheedLanguage {
+  const lang = (t.language || t.topic || '').toLowerCase()
+  if (lang === 'arabic' || lang === 'english' || lang === 'urdu') return lang
+  if (ARABIC_CHAR.test(t.title) || ARABIC_CHAR.test(t.reciter || '')) return 'arabic'
+  return 'english'
 }
 
-type LangFilter = 'all' | 'arabic' | 'other'
+type LangFilter = NasheedLanguage | 'all'
 
 export default function NasheedsPage() {
   const { tracks, refresh } = useAudioLibrary()
@@ -48,7 +39,11 @@ export default function NasheedsPage() {
   const [langFilter, setLangFilter] = useState<LangFilter>('all')
   const [showArtistDropdown, setShowArtistDropdown] = useState(false)
 
-  const arabicCount = useMemo(() => allTracks.filter(isArabicNasheed).length, [allTracks])
+  const counts = useMemo(() => {
+    const c = { all: allTracks.length, arabic: 0, english: 0, urdu: 0 }
+    for (const t of allTracks) c[getNasheedLanguage(t)]++
+    return c
+  }, [allTracks])
 
   const trackArtists = [...new Set(allTracks.map((t) => t.reciter).filter(Boolean))]
   const allArtists = [...new Set([...NASHEED_ARTISTS.filter(a => a !== 'Other'), ...trackArtists])].sort((a, b) =>
@@ -66,12 +61,13 @@ export default function NasheedsPage() {
       ? t.reciter === selectedArtist
       : true
 
-    const arabic = isArabicNasheed(t)
-    const matchesLang =
-      langFilter === 'all' ? true : langFilter === 'arabic' ? arabic : !arabic
+    const lang = getNasheedLanguage(t)
+    const matchesLang = langFilter === 'all' ? true : lang === langFilter
 
     return matchesSearch && matchesArtist && matchesLang
   })
+
+  const activeTab = LANGUAGE_TABS.find((t) => t.id === langFilter)!
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
@@ -84,9 +80,12 @@ export default function NasheedsPage() {
             <h1 className="text-2xl font-bold text-slate-800">Nasheeds</h1>
             <p className="text-slate-500 text-sm mt-0.5">
               {allTracks.length} nasheed{allTracks.length !== 1 ? 's' : ''}
-              {arabicCount > 0 && (
-                <span className="text-emerald-600"> · {arabicCount} Arabic</span>
-              )}
+              <span className="text-slate-400"> · </span>
+              <span className="text-emerald-600">{counts.arabic} Arabic</span>
+              <span className="text-slate-400"> · </span>
+              <span className="text-sky-600">{counts.english} English</span>
+              <span className="text-slate-400"> · </span>
+              <span className="text-amber-600">{counts.urdu} Urdu</span>
             </p>
           </div>
         </div>
@@ -94,7 +93,7 @@ export default function NasheedsPage() {
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search… ابحث"
+            placeholder="Search… ابحث · تلاش"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="bg-white border border-slate-200 text-slate-800 placeholder-slate-400 pl-9 pr-4 py-2 rounded-xl text-sm focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 w-56 shadow-sm"
@@ -102,40 +101,40 @@ export default function NasheedsPage() {
         </div>
       </div>
 
-      {/* Language filter */}
-      <div className="flex flex-wrap gap-2 mb-5">
-        {(
-          [
-            { id: 'all' as const, label: 'All', count: allTracks.length },
-            { id: 'arabic' as const, label: 'العربية Arabic', count: arabicCount },
-            { id: 'other' as const, label: 'Other languages', count: allTracks.length - arabicCount },
-          ]
-        ).map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setLangFilter(tab.id)}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-              langFilter === tab.id
-                ? tab.id === 'arabic'
-                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
-                  : 'bg-violet-600 text-white shadow-md'
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            {tab.label}
-            <span
-              className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
-                langFilter === tab.id ? 'bg-white/20' : 'bg-slate-100 text-slate-500'
+      {/* Language categories */}
+      <div className="mb-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Language</p>
+        <div className="flex flex-wrap gap-2 mb-5">
+          {LANGUAGE_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setLangFilter(tab.id)}
+              className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                langFilter === tab.id
+                  ? tab.activeClass
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}
             >
-              {tab.count}
-            </span>
-          </button>
-        ))}
+              <span dir={tab.id === 'arabic' || tab.id === 'urdu' ? 'rtl' : 'ltr'}>
+                {tab.id === 'all' ? tab.label : `${tab.labelNative}`}
+              </span>
+              {tab.id !== 'all' && tab.labelNative !== tab.label && (
+                <span className="opacity-80 font-normal"> · {tab.label}</span>
+              )}
+              <span
+                className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
+                  langFilter === tab.id ? 'bg-white/20' : 'bg-slate-100 text-slate-500'
+                }`}
+              >
+                {counts[tab.id]}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Artist Filter Dropdown */}
+      {/* Artist Filter */}
       <div className="flex flex-wrap items-center gap-4 mb-8">
         <div className="relative">
           <button
@@ -201,11 +200,24 @@ export default function NasheedsPage() {
         )}
       </div>
 
-      {langFilter === 'arabic' && filtered.length > 0 && (
-        <div className="mb-6 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 p-4 text-white shadow-md">
-          <p className="font-bold text-lg" dir="rtl">أناشيد عربية</p>
+      {langFilter !== 'all' && filtered.length > 0 && (
+        <div
+          className={`mb-6 rounded-xl p-4 text-white shadow-md ${
+            langFilter === 'arabic'
+              ? 'bg-gradient-to-r from-emerald-600 to-teal-600'
+              : langFilter === 'english'
+                ? 'bg-gradient-to-r from-sky-600 to-blue-600'
+                : 'bg-gradient-to-r from-amber-500 to-orange-500'
+          }`}
+        >
+          <p
+            className="font-bold text-lg"
+            dir={langFilter === 'english' ? 'ltr' : 'rtl'}
+          >
+            {activeTab.labelNative} Nasheeds
+          </p>
           <p className="text-white/85 text-sm mt-0.5">
-            {filtered.length} Arabic nasheed{filtered.length !== 1 ? 's' : ''} — classic anasheed & modern voices
+            {filtered.length} track{filtered.length !== 1 ? 's' : ''} in {activeTab.label}
           </p>
         </div>
       )}
@@ -213,8 +225,8 @@ export default function NasheedsPage() {
       <TrackList
         tracks={filtered}
         emptyMessage={
-          langFilter === 'arabic'
-            ? 'No Arabic nasheeds found.'
+          langFilter !== 'all'
+            ? `No ${activeTab.label} nasheeds found.`
             : selectedArtist !== 'all'
               ? 'No nasheeds found for the selected artist.'
               : 'No nasheeds uploaded yet.'

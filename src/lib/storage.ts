@@ -107,7 +107,7 @@ export function deleteTrack(id: string): void {
 
 export async function updateTrackInCloud(
   id: string, 
-  patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic'>>
+  patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic' | 'language'>>
 ): Promise<void> {
   // Find the Firestore document with matching track id
   const q = query(collection(db, TRACKS_COLLECTION))

@@ -7,21 +7,15 @@ import { ALL_CATEGORIES_LIST, QURAN_RECITERS, NASHEED_ARTISTS, TALKS_SPEAKERS, T
 import type { AudioCategory } from '../types'
 import WaveSurfer from 'wavesurfer.js'
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions'
+import {
+  EFFECTS,
+  applyEffectToBuffer as applySharedEffect,
+  audioBufferToWav,
+  type AudioEffectType,
+} from '../lib/audioEffects'
 
 const RECORDER_USERNAME = 'recorder'
 const RECORDER_PASSWORD = 'record123'
-
-type AudioEffectType = 'none' | 'echo' | 'reverb' | 'distortion' | 'pitchUp' | 'pitchDown' | 'telephone'
-
-const EFFECTS: { id: AudioEffectType; label: string; emoji: string }[] = [
-  { id: 'none', label: 'None', emoji: '🎵' },
-  { id: 'echo', label: 'Echo', emoji: '🔊' },
-  { id: 'reverb', label: 'Reverb', emoji: '🏛️' },
-  { id: 'distortion', label: 'Distortion', emoji: '⚡' },
-  { id: 'pitchUp', label: 'Pitch Up', emoji: '⬆️' },
-  { id: 'pitchDown', label: 'Pitch Down', emoji: '⬇️' },
-  { id: 'telephone', label: 'Telephone', emoji: '📞' },
-]
 
 const CATEGORY_ROUTES: Record<string, string> = {
   quran: '/quran', nasheeds: '/nasheeds', talks: '/talks',
@@ -128,93 +122,8 @@ export default function RecordPage() {
   }
 
   // ── Effects ───────────────────────────────────────────────────────────────
-  const applyEffectToBuffer = async (buffer: AudioBuffer, effect: AudioEffectType, intensity: number): Promise<AudioBuffer> => {
-    const sr = buffer.sampleRate
-    const extraSeconds = effect === 'echo' ? 3 : effect === 'reverb' ? 3 : 0
-    const offCtx = new OfflineAudioContext(
-      buffer.numberOfChannels,
-      buffer.length + Math.floor(extraSeconds * sr),
-      sr
-    )
-
-    // Helper: create source
-    const makeSrc = (buf: AudioBuffer, offset = 0) => {
-      const s = offCtx.createBufferSource()
-      s.buffer = buf
-      if (effect === 'pitchUp') s.playbackRate.value = 1 + intensity * 0.5
-      if (effect === 'pitchDown') s.playbackRate.value = Math.max(0.5, 1 - intensity * 0.4)
-      return s
-    }
-
-    if (effect === 'echo') {
-      // Dry signal
-      const dry = offCtx.createGain()
-      dry.gain.value = 1
-      const srcDry = makeSrc(buffer)
-      srcDry.connect(dry)
-      dry.connect(offCtx.destination)
-      srcDry.start(0)
-
-      // Echo taps — multiple copies at increasing delays with decreasing volume
-      const delayTime = 0.2 + intensity * 0.3  // 0.2s – 0.5s
-      const decayFactor = 0.55 + intensity * 0.15  // 0.55 – 0.7
-      const numTaps = 4
-      for (let tap = 1; tap <= numTaps; tap++) {
-        const tapGain = offCtx.createGain()
-        tapGain.gain.value = Math.pow(decayFactor, tap) * intensity
-        const tapSrc = makeSrc(buffer)
-        tapSrc.connect(tapGain)
-        tapGain.connect(offCtx.destination)
-        tapSrc.start(delayTime * tap)
-      }
-
-    } else if (effect === 'reverb') {
-      const conv = offCtx.createConvolver()
-      const irLen = Math.floor(sr * (1 + intensity * 2))
-      const ir = offCtx.createBuffer(2, irLen, sr)
-      for (let ch = 0; ch < 2; ch++) {
-        const d = ir.getChannelData(ch)
-        for (let i = 0; i < irLen; i++) {
-          d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 1.5 + (1 - intensity) * 3)
-        }
-      }
-      conv.buffer = ir
-      const wet = offCtx.createGain(); wet.gain.value = 0.6 + intensity * 0.4
-      const dry = offCtx.createGain(); dry.gain.value = 1 - intensity * 0.3
-      const src = makeSrc(buffer)
-      src.connect(conv); conv.connect(wet); wet.connect(offCtx.destination)
-      src.connect(dry); dry.connect(offCtx.destination)
-      src.start(0)
-
-    } else if (effect === 'distortion') {
-      const ws = offCtx.createWaveShaper()
-      const curve = new Float32Array(512)
-      const k = 50 + intensity * 350
-      for (let i = 0; i < 512; i++) {
-        const x = (i * 2) / 512 - 1
-        curve[i] = ((Math.PI + k) * x) / (Math.PI + k * Math.abs(x))
-      }
-      ws.curve = curve; ws.oversample = '4x'
-      const src = makeSrc(buffer)
-      src.connect(ws); ws.connect(offCtx.destination); src.start(0)
-
-    } else if (effect === 'pitchUp' || effect === 'pitchDown') {
-      const src = makeSrc(buffer)
-      src.connect(offCtx.destination); src.start(0)
-
-    } else if (effect === 'telephone') {
-      const hp = offCtx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 300 + (1 - intensity) * 500
-      const lp = offCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3400 - (1 - intensity) * 1000
-      const src = makeSrc(buffer)
-      src.connect(hp); hp.connect(lp); lp.connect(offCtx.destination); src.start(0)
-
-    } else {
-      const src = makeSrc(buffer)
-      src.connect(offCtx.destination); src.start(0)
-    }
-
-    return offCtx.startRendering()
-  }
+  const applyEffectToBuffer = (buffer: AudioBuffer, effect: AudioEffectType, intensity: number) =>
+    applySharedEffect(buffer, effect, intensity)
 
   const handleApplyEffect = async () => {
     if (!currentEdit || activeEffect === 'none') return
@@ -371,24 +280,6 @@ export default function RecordPage() {
     rp.on('region-created', (r: any) => { setSelectedRegion({ start: r.start, end: r.end }); setHasRegion(true); rp.getRegions().forEach((x: any) => { if (x.id !== r.id) x.remove() }) })
     rp.on('region-updated', (r: any) => setSelectedRegion({ start: r.start, end: r.end }))
     rp.on('region-removed', () => { setSelectedRegion(null); setHasRegion(false) })
-  }
-
-  const audioBufferToWav = (buffer: AudioBuffer): Blob => {
-    const len = buffer.length * buffer.numberOfChannels * 2 + 44
-    const ab = new ArrayBuffer(len); const view = new DataView(ab)
-    const channels: Float32Array[] = []; for (let i = 0; i < buffer.numberOfChannels; i++) channels.push(buffer.getChannelData(i))
-    const ws = (o: number, s: string) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)) }
-    ws(0, 'RIFF'); view.setUint32(4, 36 + buffer.length * buffer.numberOfChannels * 2, true)
-    ws(8, 'WAVE'); ws(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true)
-    view.setUint16(22, buffer.numberOfChannels, true); view.setUint32(24, buffer.sampleRate, true)
-    view.setUint32(28, buffer.sampleRate * buffer.numberOfChannels * 2, true)
-    view.setUint16(32, buffer.numberOfChannels * 2, true); view.setUint16(34, 16, true)
-    ws(36, 'data'); view.setUint32(40, buffer.length * buffer.numberOfChannels * 2, true)
-    let offset = 44
-    for (let i = 0; i < buffer.length; i++) for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
-      const s = Math.max(-1, Math.min(1, channels[ch][i])); view.setInt16(offset, s * 0x7FFF, true); offset += 2
-    }
-    return new Blob([ab], { type: 'audio/wav' })
   }
 
   // ── Edit ops ──────────────────────────────────────────────────────────────
@@ -875,9 +766,9 @@ export default function RecordPage() {
                   {/* Effects */}
                   <div className="border border-violet-200 rounded-xl p-4 mb-5 bg-gradient-to-br from-violet-50 to-indigo-50">
                     <div className="flex items-center gap-2 mb-3"><Sparkles size={18} className="text-violet-600" /><h3 className="font-semibold text-slate-800 text-sm">Audio Effects</h3></div>
-                    <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 mb-3">
+                    <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2 mb-3">
                       {EFFECTS.map(fx => (
-                        <button key={fx.id} onClick={() => setActiveEffect(fx.id)} className={`flex flex-col items-center gap-1 p-2 rounded-xl border text-xs font-medium transition-all ${activeEffect === fx.id ? 'bg-violet-600 border-violet-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-700 hover:border-violet-300 hover:bg-violet-50'}`} title={fx.label}>
+                        <button key={fx.id} onClick={() => setActiveEffect(fx.id)} className={`flex flex-col items-center gap-1 p-2 rounded-xl border text-xs font-medium transition-all ${activeEffect === fx.id ? 'bg-violet-600 border-violet-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-700 hover:border-violet-300 hover:bg-violet-50'}`} title={fx.description || fx.label}>
                           <span className="text-base">{fx.emoji}</span><span className="truncate w-full text-center leading-tight">{fx.label}</span>
                         </button>
                       ))}

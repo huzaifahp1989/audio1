@@ -7,6 +7,7 @@ import QuranPage from './pages/QuranPage'
 import NasheedsPage from './pages/NasheedsPage'
 import TalksPage from './pages/TalksPage'
 import KidsPage from './pages/KidsPage'
+import KidsRecordPage from './pages/KidsRecordPage'
 import AdminPage from './pages/AdminPage'
 import RecordPage from './pages/RecordPage'
 import AudiobookPage from './pages/AudiobookPage'
@@ -25,6 +26,7 @@ export default function App() {
               <Route path="/nasheeds" element={<NasheedsPage />} />
               <Route path="/talks" element={<TalksPage />} />
               <Route path="/kids" element={<KidsPage />} />
+              <Route path="/kids/studio" element={<KidsRecordPage />} />
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/record" element={<RecordPage />} />
               <Route path="/audiobooks" element={<AudiobookPage />} />

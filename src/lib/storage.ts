@@ -10,7 +10,7 @@ const TRACKS_COLLECTION = 'tracks'
 export async function uploadAudioToCloud(
   file: File, 
   id: string, 
-  metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; duration?: number; text?: string }
+  metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; duration?: number; text?: string; language?: string }
 ): Promise<{ url: string; track: AudioTrack }> {
   const filename = `audio/${id}-${file.name}`
   const storageRef = ref(storage, filename)
@@ -45,6 +45,9 @@ export async function uploadAudioToCloud(
   }
   if (metadata.text !== undefined && metadata.text !== '') {
     track.text = metadata.text
+  }
+  if (metadata.language !== undefined && metadata.language !== '') {
+    track.language = metadata.language
   }
   
   // Save metadata to Firestore using the same ID as the track

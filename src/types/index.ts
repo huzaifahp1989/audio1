@@ -14,7 +14,8 @@ export interface AudioTrack {
   title: string
   category: AudioCategory
   reciter: string
-  topic?: string  // For talks category
+  topic?: string  // For talks category; also used as 'arabic' for nasheed language
+  language?: string // e.g. 'arabic', 'urdu', 'english'
   text?: string   // For audiobooks, hadith, and dua - the text content
   fileName: string
   fileSize: number

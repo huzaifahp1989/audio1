@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { Star } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Mic, Star } from 'lucide-react'
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
 import TrackList from '../components/TrackList'
 import { KIDS_CATEGORIES } from '../constants/categories'
@@ -14,14 +15,24 @@ export default function KidsPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center shadow-sm">
-          <Star size={22} className="text-amber-500" />
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
+        <div className="flex items-center gap-4 flex-1">
+          <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center shadow-sm">
+            <Star size={22} className="text-amber-500" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">Kids Audio</h1>
+            <p className="text-slate-500 text-sm mt-0.5">Educational and fun content for children</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Kids Audio</h1>
-          <p className="text-slate-500 text-sm mt-0.5">Educational and fun content for children</p>
-        </div>
+        <Link
+          to="/kids/studio"
+          className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-amber-500 to-orange-500 shadow-md hover:from-amber-600 hover:to-orange-600 transition-all"
+        >
+          <Mic size={18} />
+          Kids Studio
+          <span className="text-white/80 font-normal hidden sm:inline">· echo & fun voices</span>
+        </Link>
       </div>
 
       {/* Tabs */}
@@ -70,7 +81,7 @@ export default function KidsPage() {
 
       <TrackList
         tracks={filteredTracks}
-        emptyMessage={`No ${KIDS_CATEGORIES.find((c) => c.id === activeTab)?.label} uploaded yet.`}
+        emptyMessage={`No ${KIDS_CATEGORIES.find((c) => c.id === activeTab)?.label} yet — open Kids Studio to record one!`}
       />
     </div>
   )

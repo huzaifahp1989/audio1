@@ -35,7 +35,9 @@ export default function Header() {
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-1 ml-4 flex-1">
           {NAV_LINKS.map(({ to, label, icon: Icon }) => {
-            const active = location.pathname === to
+            const active = to === '/'
+              ? location.pathname === '/'
+              : location.pathname === to || location.pathname.startsWith(to + '/')
             return (
               <Link
                 key={to}
@@ -66,7 +68,9 @@ export default function Header() {
       {mobileOpen && (
         <div className="md:hidden border-t border-slate-200 bg-white">
           {NAV_LINKS.map(({ to, label, icon: Icon }) => {
-            const active = location.pathname === to
+            const active = to === '/'
+              ? location.pathname === '/'
+              : location.pathname === to || location.pathname.startsWith(to + '/')
             return (
               <Link
                 key={to}

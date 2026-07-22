@@ -74,14 +74,27 @@ export default function TrackCard({ track, tracks, index }: TrackCardProps) {
           {/* Info */}
           <div className="min-w-0 flex-1">
             <h3
+              dir={/[\u0600-\u06FF]/.test(track.title) ? 'rtl' : 'ltr'}
               className={`font-semibold text-sm leading-tight truncate ${
                 isActive ? 'text-violet-700' : 'text-slate-800'
               }`}
             >
               {track.title}
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5 truncate">{track.reciter}</p>
-            <div className="flex items-center gap-2 mt-2">
+            <p
+              dir={/[\u0600-\u06FF]/.test(track.reciter || '') ? 'rtl' : 'ltr'}
+              className="text-xs text-slate-500 mt-0.5 truncate"
+            >
+              {track.reciter}
+            </p>
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              {(() => {
+                const lang = (track.language || track.topic || '').toLowerCase()
+                if (lang === 'arabic') return <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">Arabic</span>
+                if (lang === 'english') return <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-100">English</span>
+                if (lang === 'urdu') return <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100">Urdu</span>
+                return null
+              })()}
               {track.duration !== undefined && (
                 <span className="text-xs text-slate-400 tabular-nums">{formatDuration(track.duration)}</span>
               )}

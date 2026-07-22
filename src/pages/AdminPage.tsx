@@ -175,7 +175,7 @@ function EditModal({
   onClose,
 }: {
   track: AudioTrack
-  onSave: (patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic'>>) => void
+  onSave: (patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic' | 'language'>>) => void
   onClose: () => void
 }) {
   const [title, setTitle] = useState(track.title)
@@ -189,6 +189,10 @@ function EditModal({
     return reciters.includes(track.reciter) ? '' : track.reciter
   })
   const [topic, setTopic] = useState(track.topic || '')
+  const [language, setLanguage] = useState<'arabic' | 'english' | 'urdu'>(() => {
+    const lang = (track.language || track.topic || 'arabic').toLowerCase()
+    return lang === 'english' || lang === 'urdu' ? lang : 'arabic'
+  })
 
   const reciters = getRecitersForCategory(category)
   const showCustom = reciters.length === 0 || reciter === 'Other'
@@ -204,13 +208,18 @@ function EditModal({
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim() || !effectiveReciter.trim()) return
-    const patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic'>> = { 
+    const isNasheed = category === 'nasheeds' || category === 'kids-nasheeds'
+    const patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic' | 'language'>> = { 
       title: title.trim(), 
       category, 
       reciter: effectiveReciter.trim() 
     }
     if (category === 'talks') {
       patch.topic = topic
+    }
+    if (isNasheed) {
+      patch.language = language
+      patch.topic = language
     }
     onSave(patch)
   }
@@ -258,6 +267,21 @@ function EditModal({
               ))}
             </select>
           </div>
+
+          {(category === 'nasheeds' || category === 'kids-nasheeds') && (
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Language *</label>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value as 'arabic' | 'english' | 'urdu')}
+                className="w-full bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              >
+                <option value="arabic">العربية · Arabic</option>
+                <option value="english">English</option>
+                <option value="urdu">اردو · Urdu</option>
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">
@@ -361,6 +385,7 @@ export default function AdminPage() {
   const [reciter, setReciter] = useState('')
   const [customReciter, setCustomReciter] = useState('')
   const [topic, setTopic] = useState('')
+  const [language, setLanguage] = useState<'arabic' | 'english' | 'urdu'>('arabic')
   const [textContent, setTextContent] = useState('')
   const [success, setSuccess] = useState(false)
   const singleFileRef = useRef<HTMLInputElement>(null)
@@ -380,15 +405,17 @@ export default function AdminPage() {
   const handleSingleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!file) return
+    const isNasheed = category === 'nasheeds' || category === 'kids-nasheeds'
     const ok = await uploadTrack(file, { 
       title, 
       category, 
       reciter: effectiveReciter, 
-      topic: category === 'talks' ? topic : category === 'dua' ? topic : undefined,
+      topic: category === 'talks' ? topic : category === 'dua' ? topic : isNasheed ? language : undefined,
+      language: isNasheed ? language : undefined,
       text: supportsTextContent(category) ? textContent : undefined
     })
     if (ok) {
-      setFile(null); setTitle(''); setCategory('quran'); setReciter(''); setCustomReciter(''); setTopic(''); setTextContent('')
+      setFile(null); setTitle(''); setCategory('quran'); setReciter(''); setCustomReciter(''); setTopic(''); setLanguage('arabic'); setTextContent('')
       setSuccess(true)
       if (singleFileRef.current) singleFileRef.current.value = ''
       setTimeout(() => setSuccess(false), 3000)
@@ -557,6 +584,21 @@ export default function AdminPage() {
                     ))}
                   </select>
                 </div>
+
+                {(category === 'nasheeds' || category === 'kids-nasheeds') && (
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Language *</label>
+                    <select
+                      value={language}
+                      onChange={(e) => setLanguage(e.target.value as 'arabic' | 'english' | 'urdu')}
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                    >
+                      <option value="arabic">العربية · Arabic</option>
+                      <option value="english">English</option>
+                      <option value="urdu">اردو · Urdu</option>
+                    </select>
+                  </div>
+                )}
 
                 <div>
                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">

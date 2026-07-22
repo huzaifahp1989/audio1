@@ -9,12 +9,16 @@ export type AudioCategory =
   | 'hadith'
   | 'dua'
 
+/** Language category for nasheeds (and optionally other audio). */
+export type NasheedLanguage = 'arabic' | 'english' | 'urdu'
+
 export interface AudioTrack {
   id: string
   title: string
   category: AudioCategory
   reciter: string
-  topic?: string  // For talks category
+  topic?: string  // For talks category; mirrors language for nasheeds
+  language?: NasheedLanguage | string
   text?: string   // For audiobooks, hadith, and dua - the text content
   fileName: string
   fileSize: number

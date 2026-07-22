@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
-import type { AudioTrack, AudioCategory } from '../types'
+import type { AudioTrack, AudioCategory, NasheedLanguage } from '../types'
 import {
   uploadAudioToCloud,
   deleteAudioFromCloud,
@@ -16,6 +16,7 @@ export interface BulkUploadItem {
   reciter: string
   topic?: string
   text?: string
+  language?: NasheedLanguage | string
 }
 
 export interface BulkUploadResult {
@@ -30,10 +31,10 @@ interface AudioLibraryState {
   uploading: boolean
   uploadError: string | null
   refresh: () => void
-  uploadTrack: (file: File, metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; text?: string }) => Promise<boolean>
+  uploadTrack: (file: File, metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; text?: string; language?: NasheedLanguage | string }) => Promise<boolean>
   bulkUpload: (items: BulkUploadItem[], onProgress?: (done: number, total: number) => void) => Promise<BulkUploadResult[]>
   deleteTrackById: (id: string) => Promise<void>
-  editTrack: (id: string, patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic'>>) => Promise<void>
+  editTrack: (id: string, patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic' | 'language'>>) => Promise<void>
   getByCategory: (category: AudioCategory) => Promise<AudioTrack[]>
 }
 
@@ -76,7 +77,7 @@ export function AudioLibraryProvider({ children }: { children: ReactNode }) {
 
   const uploadTrack = useCallback(async (
     file: File,
-    metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; text?: string }
+    metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; text?: string; language?: NasheedLanguage | string }
   ): Promise<boolean> => {
     setUploadError(null)
     if (!file.type.startsWith('audio/')) { setUploadError('Please select a valid audio file.'); return false }
@@ -145,7 +146,7 @@ export function AudioLibraryProvider({ children }: { children: ReactNode }) {
 
   const editTrack = useCallback(async (
     id: string,
-    patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic'>>
+    patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic' | 'language'>>
   ) => {
     try {
       await updateTrackInCloud(id, patch)

@@ -268,9 +268,9 @@ function EditModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/30 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md p-6"
+        className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl border border-slate-200 w-full max-w-md p-5 sm:p-6 max-h-[92vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
@@ -282,8 +282,10 @@ function EditModal({
           </button>
         </div>
 
-        <div className="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-500">
-          <span className="font-medium text-slate-600">File:</span> {track.fileName} &nbsp;·&nbsp; {formatFileSize(track.fileSize)}
+        <div className="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-500 min-w-0">
+          <span className="font-medium text-slate-600">File:</span>{' '}
+          <span className="break-all">{track.fileName}</span>
+          {' '}· {formatFileSize(track.fileSize)}
         </div>
 
         <form onSubmit={handleSave} className="space-y-4">
@@ -644,10 +646,10 @@ export default function AdminPage() {
   if (!authed) return <LoginGate onLogin={() => setAuthed(true)} />
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-4 py-6 sm:py-10 pb-28 sm:pb-10">
+    <div className="max-w-6xl mx-auto w-full min-w-0 px-3 sm:px-4 py-6 sm:py-10 pb-28 sm:pb-10 overflow-x-hidden">
       {/* Header */}
-      <div className="flex items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6">
-        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+      <div className="flex items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6 min-w-0">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-violet-100 flex items-center justify-center shadow-sm shrink-0">
             <Shield size={20} className="text-violet-600" />
           </div>
@@ -749,28 +751,28 @@ export default function AdminPage() {
       {adminSection === 'upload' && (
       <div className="grid grid-cols-1 gap-8 max-w-2xl">
         {/* ── Upload panel ────────────────────────────────────────────── */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm overflow-hidden min-w-0">
           {/* Tab switcher */}
-          <div className="flex gap-2 mb-5">
+          <div className="grid grid-cols-2 gap-2 mb-5 w-full min-w-0">
             <button
               onClick={() => setActiveTab('single')}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex items-center justify-center gap-1.5 px-2 sm:px-4 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors min-w-0 ${
                 activeTab === 'single'
                   ? 'bg-violet-600 text-white shadow-sm'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              <Upload size={14} /> Single Upload
+              <Upload size={14} className="shrink-0" /> <span className="truncate">Single Upload</span>
             </button>
             <button
               onClick={() => setActiveTab('bulk')}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex items-center justify-center gap-1.5 px-2 sm:px-4 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors min-w-0 ${
                 activeTab === 'bulk'
                   ? 'bg-violet-600 text-white shadow-sm'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              <Layers size={14} /> Bulk Upload
+              <Layers size={14} className="shrink-0" /> <span className="truncate">Bulk Upload</span>
             </button>
           </div>
 
@@ -796,10 +798,10 @@ export default function AdminPage() {
                     onClick={() => singleFileRef.current?.click()}
                   >
                     {file ? (
-                      <div className="flex items-center gap-3 justify-center">
-                        <FileAudio size={20} className="text-violet-500" />
-                        <div className="text-left">
-                          <p className="text-sm text-slate-700 font-medium truncate max-w-xs">{file.name}</p>
+                      <div className="flex items-center gap-3 justify-center min-w-0 px-1">
+                        <FileAudio size={20} className="text-violet-500 shrink-0" />
+                        <div className="text-left min-w-0">
+                          <p className="text-sm text-slate-700 font-medium truncate">{file.name}</p>
                           <p className="text-xs text-slate-400">{formatFileSize(file.size)}</p>
                         </div>
                       </div>
@@ -1037,7 +1039,7 @@ export default function AdminPage() {
                 {kidsTracks.length}
               </span>
             </h2>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Link
                 to="/kids-recordings"
                 className="text-xs font-medium text-amber-700 hover:text-amber-900 px-3 py-1.5 border border-amber-200 bg-amber-50 rounded-lg"
@@ -1070,7 +1072,7 @@ export default function AdminPage() {
                 return (
                   <div
                     key={track.id}
-                    className={`flex items-center gap-3 border rounded-xl px-4 py-3 transition-colors ${
+                    className={`flex items-center gap-2 sm:gap-3 border rounded-xl px-2.5 sm:px-4 py-3 transition-colors min-w-0 ${
                       isActive ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-100'
                     }`}
                   >
@@ -1084,10 +1086,10 @@ export default function AdminPage() {
                     >
                       {isActive && isPlaying ? <Pause size={15} /> : <Play size={15} className="ml-0.5" />}
                     </button>
-                    <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 text-sm shadow-sm">
+                    <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 text-sm shadow-sm hidden sm:flex">
                       {categoryEmoji(track.category)}
                     </div>
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 overflow-hidden">
                       <p className={`text-sm font-medium truncate ${isActive ? 'text-amber-800' : 'text-slate-800'}`}>{track.title}</p>
                       <p className="text-xs text-slate-400 truncate">
                         {track.reciter} · {ALL_CATEGORIES_LIST.find((c) => c.value === track.category)?.label}
@@ -1120,10 +1122,10 @@ export default function AdminPage() {
       {adminSection === 'recorded' && (
         <div className="bg-white border border-violet-200 rounded-2xl p-4 sm:p-6 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <Mic size={20} className="text-violet-500" />
-              Recorded uploads (WAV / Studio)
-              <span className="ml-1 text-sm font-normal text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full">
+            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 min-w-0 flex-wrap">
+              <Mic size={20} className="text-violet-500 shrink-0" />
+              <span className="min-w-0">Recorded uploads</span>
+              <span className="text-sm font-normal text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full shrink-0">
                 {recordedUploads.length}
               </span>
             </h2>
@@ -1153,7 +1155,7 @@ export default function AdminPage() {
                 return (
                   <div
                     key={track.id}
-                    className={`flex items-center gap-3 border rounded-xl px-4 py-3 transition-colors ${
+                    className={`flex items-center gap-2 sm:gap-3 border rounded-xl px-2.5 sm:px-4 py-3 transition-colors min-w-0 ${
                       isActive ? 'bg-violet-50 border-violet-200' : 'bg-slate-50 border-slate-100'
                     }`}
                   >
@@ -1167,15 +1169,14 @@ export default function AdminPage() {
                     >
                       {isActive && isPlaying ? <Pause size={15} /> : <Play size={15} className="ml-0.5" />}
                     </button>
-                    <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 text-sm shadow-sm">
+                    <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 items-center justify-center shrink-0 text-sm shadow-sm hidden sm:flex">
                       {categoryEmoji(track.category)}
                     </div>
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 overflow-hidden">
                       <p className={`text-sm font-medium truncate ${isActive ? 'text-violet-700' : 'text-slate-800'}`}>{track.title}</p>
                       <p className="text-xs text-slate-400 truncate">
                         {track.reciter || '—'} · {ALL_CATEGORIES_LIST.find((c) => c.value === track.category)?.label}
                         {track.source ? ` · ${track.source}` : ''}
-                        {track.mimeType ? ` · ${track.mimeType}` : ''}
                         {` · ${formatViews(track.views ?? 0)} views`}
                       </p>
                     </div>
@@ -1231,7 +1232,7 @@ export default function AdminPage() {
             <select
               value={uploadCategory}
               onChange={(e) => setUploadCategory(e.target.value as AudioCategory | 'all')}
-              className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-violet-400"
+              className="w-full sm:w-auto bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-violet-400"
             >
               <option value="all">All categories</option>
               {ALL_CATEGORIES_LIST.map(({ value, label }) => (
@@ -1253,7 +1254,7 @@ export default function AdminPage() {
                 return (
                   <div
                     key={track.id}
-                    className={`flex items-center gap-3 border rounded-xl px-4 py-3 transition-colors group ${
+                    className={`flex items-center gap-2 sm:gap-3 border rounded-xl px-2.5 sm:px-4 py-3 transition-colors group min-w-0 ${
                       isActive ? 'bg-violet-50 border-violet-200' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'
                     }`}
                   >
@@ -1267,10 +1268,10 @@ export default function AdminPage() {
                     >
                       {isActive && isPlaying ? <Pause size={15} /> : <Play size={15} className="ml-0.5" />}
                     </button>
-                    <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 text-sm shadow-sm">
+                    <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 items-center justify-center shrink-0 text-sm shadow-sm hidden sm:flex">
                       {categoryEmoji(track.category)}
                     </div>
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 overflow-hidden">
                       <p className={`text-sm font-medium truncate ${isActive ? 'text-violet-700' : 'text-slate-800'}`}>{track.title}</p>
                       <p className="text-xs text-slate-400 truncate">
                         {track.reciter} · {ALL_CATEGORIES_LIST.find((c) => c.value === track.category)?.label}
@@ -1318,12 +1319,12 @@ export default function AdminPage() {
 
       {adminSection === 'drafts' && (
       <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <FolderOpen size={20} className="text-amber-500" /> Recording Drafts
+          <div className="flex items-center justify-between mb-5 flex-wrap gap-3 min-w-0">
+          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 min-w-0">
+            <FolderOpen size={20} className="text-amber-500 shrink-0" /> Recording Drafts
             <span className="ml-1 text-sm font-normal text-slate-400">({drafts.length})</span>
           </h2>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Link
               to="/record"
               className="flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-800 px-3 py-1.5 border border-violet-200 bg-violet-50 rounded-lg"

@@ -9,6 +9,7 @@
     background-color: #f8fafc;
     color: #0f172a;
     font-family: 'Segoe UI', system-ui, sans-serif;
+    overflow-x: hidden;
   }
 
   * {

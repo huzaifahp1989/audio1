@@ -537,6 +537,7 @@ export default function AdminPage() {
   const [bulkResults, setBulkResults] = useState<BulkUploadResult[] | null>(null)
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null)
   const [activeTab, setActiveTab] = useState<'single' | 'bulk'>('single')
+  const [adminSection, setAdminSection] = useState<'upload' | 'manage' | 'kids' | 'drafts'>('manage')
   const bulkFileRef = useRef<HTMLInputElement>(null)
 
   const reciters = getRecitersForCategory(category)
@@ -643,7 +644,39 @@ export default function AdminPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Section navigation — keep all admin tools visible */}
+      <div className="mb-6 flex flex-wrap gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200">
+        {([
+          { id: 'manage' as const, label: 'Manage Uploads', icon: Search, count: tracks.length },
+          { id: 'kids' as const, label: 'Kids Recordings', icon: Star, count: kidsTracks.length },
+          { id: 'drafts' as const, label: 'Recording Drafts', icon: FolderOpen, count: drafts.length },
+          { id: 'upload' as const, label: 'Upload Audio', icon: Upload, count: null },
+        ]).map(({ id, label, icon: Icon, count }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setAdminSection(id)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+              adminSection === id
+                ? 'bg-white text-violet-700 shadow-sm border border-violet-200'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+            }`}
+          >
+            <Icon size={15} />
+            {label}
+            {count !== null && (
+              <span className={`text-xs px-1.5 py-0.5 rounded-md ${
+                adminSection === id ? 'bg-violet-100 text-violet-700' : 'bg-slate-200 text-slate-600'
+              }`}>
+                {count}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {adminSection === 'upload' && (
+      <div className="grid grid-cols-1 gap-8 max-w-2xl">
         {/* ── Upload panel ────────────────────────────────────────────── */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
           {/* Tab switcher */}
@@ -920,9 +953,11 @@ export default function AdminPage() {
             </form>
           )}
         </div>
+      </div>
+      )}
 
-        {/* ── Kids recordings (live in Kids Audio) ─────────────────────── */}
-        <div className="bg-white border border-amber-200 rounded-2xl p-6 shadow-sm overflow-hidden mb-6">
+      {adminSection === 'kids' && (
+        <div className="bg-white border border-amber-200 rounded-2xl p-6 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <Star size={20} className="text-amber-500" />
@@ -1008,8 +1043,9 @@ export default function AdminPage() {
             </div>
           )}
         </div>
+      )}
 
-        {/* ── Manage uploads ───────────────────────────────────────────── */}
+      {adminSection === 'manage' && (
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
             <h2 className="text-lg font-bold text-slate-800">
@@ -1107,7 +1143,7 @@ export default function AdminPage() {
             </div>
           )}
         </div>
-      </div>
+      )}
 
       {/* Edit modal */}
       {editingTrack && (
@@ -1121,8 +1157,8 @@ export default function AdminPage() {
         />
       )}
 
-      {/* ── Drafts Section ── */}
-      <div className="mt-8 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      {adminSection === 'drafts' && (
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
         <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
           <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
             <FolderOpen size={20} className="text-amber-500" /> Recording Drafts
@@ -1224,6 +1260,7 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* Draft Edit Modal */}
       {editingDraft && (

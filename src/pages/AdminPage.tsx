@@ -627,67 +627,129 @@ export default function AdminPage() {
 
   const totalSize = tracks.reduce((acc, t) => acc + t.fileSize, 0)
 
+  const adminSections = [
+    { id: 'manage' as const, label: 'Manage', short: 'Manage', icon: Search, count: tracks.length },
+    { id: 'kids' as const, label: 'Kids', short: 'Kids', icon: Star, count: kidsTracks.length },
+    { id: 'recorded' as const, label: 'Recorded', short: 'WAV', icon: Mic, count: recordedUploads.length },
+    { id: 'drafts' as const, label: 'Drafts', short: 'Drafts', icon: FolderOpen, count: drafts.length },
+    { id: 'upload' as const, label: 'Upload', short: 'Upload', icon: Upload, count: null },
+  ]
+
+  const goToSection = (id: typeof adminSection) => {
+    setAdminSection(id)
+    // Keep features reachable without scrolling back to the top
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   if (!authed) return <LoginGate onLogin={() => setAuthed(true)} />
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10">
+    <div className="max-w-6xl mx-auto px-3 sm:px-4 py-6 sm:py-10 pb-28 sm:pb-10">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-violet-100 flex items-center justify-center shadow-sm">
-            <Shield size={22} className="text-violet-600" />
+      <div className="flex items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-violet-100 flex items-center justify-center shadow-sm shrink-0">
+            <Shield size={20} className="text-violet-600" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">Admin Dashboard</h1>
-            <p className="text-slate-500 text-sm">
-              {tracks.length} tracks · {kidsTracks.length} kids · {formatFileSize(totalSize)} used
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 truncate">Admin</h1>
+            <p className="text-slate-500 text-xs sm:text-sm truncate">
+              {tracks.length} tracks · {kidsTracks.length} kids · {formatFileSize(totalSize)}
             </p>
           </div>
         </div>
         <button
           onClick={() => { sessionStorage.removeItem(SESSION_KEY); setAuthed(false) }}
-          className="flex items-center gap-2 text-slate-500 hover:text-slate-800 text-sm transition-colors bg-white border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50"
+          className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 text-sm transition-colors bg-white border border-slate-200 px-2.5 sm:px-3 py-2 rounded-lg hover:bg-slate-50 shrink-0"
         >
-          <LogOut size={15} /> Sign Out
+          <LogOut size={15} />
+          <span className="hidden sm:inline">Sign Out</span>
         </button>
       </div>
 
-      {/* Section navigation — keep all admin tools visible */}
-      <div className="mb-6 flex flex-wrap gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200">
-        {([
-          { id: 'manage' as const, label: 'Manage Uploads', icon: Search, count: tracks.length },
-          { id: 'kids' as const, label: 'Kids Recordings', icon: Star, count: kidsTracks.length },
-          { id: 'recorded' as const, label: 'Recorded (WAV)', icon: Mic, count: recordedUploads.length },
-          { id: 'drafts' as const, label: 'Recording Drafts', icon: FolderOpen, count: drafts.length },
-          { id: 'upload' as const, label: 'Upload Audio', icon: Upload, count: null },
-        ]).map(({ id, label, icon: Icon, count }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setAdminSection(id)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-              adminSection === id
-                ? 'bg-white text-violet-700 shadow-sm border border-violet-200'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
-            }`}
-          >
-            <Icon size={15} />
-            {label}
-            {count !== null && (
-              <span className={`text-xs px-1.5 py-0.5 rounded-md ${
-                adminSection === id ? 'bg-violet-100 text-violet-700' : 'bg-slate-200 text-slate-600'
-              }`}>
-                {count}
-              </span>
-            )}
-          </button>
-        ))}
+      {/* Sticky section nav — always visible on mobile */}
+      <div className="sticky top-16 z-30 -mx-3 sm:mx-0 mb-5 sm:mb-6 px-3 sm:px-0 py-2 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/80 sm:border-0 sm:bg-transparent sm:backdrop-blur-none sm:py-0">
+        {/* Mobile: compact 5-column icon grid */}
+        <div className="grid grid-cols-5 gap-1.5 sm:hidden">
+          {adminSections.map(({ id, short, icon: Icon, count }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => goToSection(id)}
+              className={`flex flex-col items-center justify-center gap-0.5 px-1 py-2 rounded-xl text-[10px] font-semibold transition-colors min-h-[3.25rem] ${
+                adminSection === id
+                  ? 'bg-violet-600 text-white shadow-sm'
+                  : 'bg-white text-slate-600 border border-slate-200'
+              }`}
+            >
+              <Icon size={16} />
+              <span className="leading-tight">{short}</span>
+              {count !== null && (
+                <span className={`text-[9px] px-1 rounded ${
+                  adminSection === id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Desktop / tablet: horizontal pills */}
+        <div className="hidden sm:flex flex-wrap gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200">
+          {adminSections.map(({ id, label, icon: Icon, count }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => goToSection(id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                adminSection === id
+                  ? 'bg-white text-violet-700 shadow-sm border border-violet-200'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+              }`}
+            >
+              <Icon size={15} />
+              {label}
+              {count !== null && (
+                <span className={`text-xs px-1.5 py-0.5 rounded-md ${
+                  adminSection === id ? 'bg-violet-100 text-violet-700' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Mobile bottom bar duplicate for one-thumb reach while deep in a list */}
+      <div className="sm:hidden fixed bottom-0 inset-x-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-md px-2 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(15,23,42,0.08)]">
+        <div className="grid grid-cols-5 gap-1 max-w-lg mx-auto">
+          {adminSections.map(({ id, short, icon: Icon, count }) => (
+            <button
+              key={`bottom-${id}`}
+              type="button"
+              onClick={() => goToSection(id)}
+              className={`flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-xl text-[10px] font-semibold transition-colors ${
+                adminSection === id
+                  ? 'bg-violet-600 text-white'
+                  : 'text-slate-500'
+              }`}
+            >
+              <Icon size={16} />
+              <span>{short}</span>
+              {count !== null && adminSection === id && (
+                <span className="sr-only">{count}</span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       {adminSection === 'upload' && (
       <div className="grid grid-cols-1 gap-8 max-w-2xl">
         {/* ── Upload panel ────────────────────────────────────────────── */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm">
           {/* Tab switcher */}
           <div className="flex gap-2 mb-5">
             <button
@@ -966,7 +1028,7 @@ export default function AdminPage() {
       )}
 
       {adminSection === 'kids' && (
-        <div className="bg-white border border-amber-200 rounded-2xl p-6 shadow-sm overflow-hidden">
+        <div className="bg-white border border-amber-200 rounded-2xl p-4 sm:p-6 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <Star size={20} className="text-amber-500" />
@@ -1056,7 +1118,7 @@ export default function AdminPage() {
       )}
 
       {adminSection === 'recorded' && (
-        <div className="bg-white border border-violet-200 rounded-2xl p-6 shadow-sm overflow-hidden">
+        <div className="bg-white border border-violet-200 rounded-2xl p-4 sm:p-6 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <Mic size={20} className="text-violet-500" />
@@ -1140,7 +1202,7 @@ export default function AdminPage() {
       )}
 
       {adminSection === 'manage' && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
             <h2 className="text-lg font-bold text-slate-800">
               Manage Uploads

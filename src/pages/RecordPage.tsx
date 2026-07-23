@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Mic, Square, Play, Pause, Upload, RotateCcw, Scissors, SkipBack, SkipForward, Volume2, Headphones, Crop, Split, Eraser, ZoomIn, ZoomOut, Sparkles, CheckCircle, Save, FolderOpen, Trash2, Clock, ChevronRight, X } from 'lucide-react'
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
 import { useNavigate } from 'react-router-dom'
-import { saveDraft, getAllDrafts, deleteDraft, type RecordingDraft } from '../lib/indexedDb'
+import { saveDraft, getAllDrafts, deleteDraft, getDraft, type RecordingDraft } from '../lib/indexedDb'
 import { ALL_CATEGORIES_LIST, QURAN_RECITERS, NASHEED_ARTISTS, TALKS_SPEAKERS, TALKS_TOPICS } from '../constants/categories'
 import type { AudioCategory } from '../types'
 import WaveSurfer from 'wavesurfer.js'
@@ -16,6 +16,8 @@ import {
 
 const RECORDER_USERNAME = 'recorder'
 const RECORDER_PASSWORD = 'record123'
+const RECORDER_SESSION_KEY = 'recorder_authenticated'
+const LOAD_DRAFT_KEY = 'load_draft_id'
 
 const CATEGORY_ROUTES: Record<string, string> = {
   quran: '/quran', nasheeds: '/nasheeds', talks: '/talks',
@@ -34,7 +36,7 @@ function formatDate(ts: number) {
 
 export default function RecordPage() {
   const navigate = useNavigate()
-  const [authenticated, setAuthenticated] = useState(false)
+  const [authenticated, setAuthenticated] = useState(() => sessionStorage.getItem(RECORDER_SESSION_KEY) === '1')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
@@ -112,7 +114,11 @@ export default function RecordPage() {
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault()
-    if (username === RECORDER_USERNAME && password === RECORDER_PASSWORD) { setAuthenticated(true); setAuthError('') }
+    if (username === RECORDER_USERNAME && password === RECORDER_PASSWORD) {
+      sessionStorage.setItem(RECORDER_SESSION_KEY, '1')
+      setAuthenticated(true)
+      setAuthError('')
+    }
     else setAuthError('Invalid username or password')
   }
 
@@ -358,6 +364,20 @@ export default function RecordPage() {
     await loadAudioForEditing(draft.blob)
     setActiveTab('record')
   }
+
+  // Open a draft requested from Admin (same browser)
+  useEffect(() => {
+    if (!authenticated) return
+    const draftId = sessionStorage.getItem(LOAD_DRAFT_KEY)
+    if (!draftId) return
+    sessionStorage.removeItem(LOAD_DRAFT_KEY)
+    ;(async () => {
+      const draft = await getDraft(draftId)
+      if (draft) await handleLoadDraft(draft)
+      else setActiveTab('drafts')
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authenticated])
 
   const handleDeleteDraft = async (id: string) => {
     if (!confirm('Delete this draft?')) return

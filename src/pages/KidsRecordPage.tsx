@@ -333,7 +333,7 @@ export default function KidsRecordPage() {
       const ok = await uploadTrack(file, {
         title: title.trim(),
         category,
-        reciter: speaker.trim(),
+        reciter: speaker.trim() || 'Kids Studio',
       })
       if (ok) {
         setUploaded(true)

@@ -464,6 +464,7 @@ export default function AdminPage() {
   const kidsTracks = useMemo(
     () => tracks.filter((t) =>
       t.category === 'kids-stories' || t.category === 'kids-quran' || t.category === 'kids-nasheeds'
+      || /for children|\(kids\)|for kids|learn the quran for children/i.test(t.title || '')
     ),
     [tracks]
   )

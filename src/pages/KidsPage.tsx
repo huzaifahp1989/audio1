@@ -4,12 +4,44 @@ import { Mic, Star, RefreshCw } from 'lucide-react'
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
 import TrackList from '../components/TrackList'
 import { KIDS_CATEGORIES } from '../constants/categories'
-import type { AudioCategory } from '../types'
+import type { AudioCategory, AudioTrack } from '../types'
 
 type KidsTab = 'all' | AudioCategory
 
 function isKidsCategory(category: string): boolean {
   return category === 'kids-stories' || category === 'kids-quran' || category === 'kids-nasheeds'
+}
+
+/** Detect kids content even if it was uploaded under quran/nasheeds by mistake. */
+function looksLikeKidsTrack(track: AudioTrack): boolean {
+  if (isKidsCategory(track.category)) return true
+  const title = (track.title || '').toLowerCase()
+  const file = (track.fileName || '').toLowerCase()
+  const hay = `${title} ${file}`
+  return (
+    hay.includes('for children') ||
+    hay.includes('for kids') ||
+    hay.includes('(kids)') ||
+    hay.includes('kids quran') ||
+    hay.includes('learn the quran for children') ||
+    hay.includes('juz amma compilation (kids)') ||
+    hay.includes('islamic poem for kids') ||
+    title === 'allah made everything' ||
+    title === 'hasbi rabbi jallallah' ||
+    title === 'halal story'
+  )
+}
+
+function kidsTabForTrack(track: AudioTrack): AudioCategory {
+  if (isKidsCategory(track.category)) return track.category
+  if (track.category === 'nasheeds') return 'kids-nasheeds'
+  if (track.category === 'quran') return 'kids-quran'
+  const title = (track.title || '').toLowerCase()
+  if (title.includes('story')) return 'kids-stories'
+  if (title.includes('nasheed') || title.includes('poem') || title === 'allah made everything' || title === 'hasbi rabbi jallallah') {
+    return 'kids-nasheeds'
+  }
+  return 'kids-quran'
 }
 
 export default function KidsPage() {
@@ -31,10 +63,15 @@ export default function KidsPage() {
     }
   }, [tabParam])
 
-  const kidsTracks = useMemo(
-    () => tracks.filter((t) => isKidsCategory(t.category)),
-    [tracks]
-  )
+  const kidsTracks = useMemo(() => {
+    return tracks
+      .filter(looksLikeKidsTrack)
+      .map((t) =>
+        isKidsCategory(t.category)
+          ? t
+          : { ...t, category: kidsTabForTrack(t), reciter: t.reciter?.trim() || 'Kids Audio' }
+      )
+  }, [tracks])
 
   const filteredTracks = useMemo(() => {
     if (activeTab === 'all') return kidsTracks

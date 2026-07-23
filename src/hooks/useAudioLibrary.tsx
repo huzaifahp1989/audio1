@@ -1,11 +1,9 @@
-import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from 'react'
-import type { AudioTrack, AudioCategory, NasheedLanguage, TrackStatus } from '../types'
-import { isTrackApproved, isKidsCategory } from '../types'
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
+import type { AudioTrack, AudioCategory, NasheedLanguage } from '../types'
 import {
   uploadAudioToCloud,
   deleteAudioFromCloud,
   updateTrackInCloud,
-  setTrackStatusInCloud,
   getAllTracks,
   getTracksByCategory,
 } from '../lib/storage'
@@ -19,8 +17,6 @@ export interface BulkUploadItem {
   topic?: string
   text?: string
   language?: NasheedLanguage | string
-  status?: TrackStatus
-  source?: string
 }
 
 export interface BulkUploadResult {
@@ -29,36 +25,16 @@ export interface BulkUploadResult {
   error?: string
 }
 
-export type UploadTrackMeta = {
-  title: string
-  category: AudioCategory
-  reciter: string
-  topic?: string
-  text?: string
-  language?: NasheedLanguage | string
-  status?: TrackStatus
-  source?: string
-}
-
 interface AudioLibraryState {
-  /** Approved tracks only — for public pages */
   tracks: AudioTrack[]
-  /** All tracks including pending — for Admin */
-  allTracks: AudioTrack[]
-  /** Pending moderation queue */
-  pendingTracks: AudioTrack[]
-  /** Pending kids recordings specifically */
-  pendingKidsTracks: AudioTrack[]
   loading: boolean
   uploading: boolean
   uploadError: string | null
   refresh: () => void
-  uploadTrack: (file: File, metadata: UploadTrackMeta) => Promise<boolean>
+  uploadTrack: (file: File, metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; text?: string; language?: NasheedLanguage | string }) => Promise<boolean>
   bulkUpload: (items: BulkUploadItem[], onProgress?: (done: number, total: number) => void) => Promise<BulkUploadResult[]>
   deleteTrackById: (id: string) => Promise<void>
-  editTrack: (id: string, patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic' | 'language' | 'status'>>) => Promise<void>
-  approveTrack: (id: string) => Promise<boolean>
-  rejectTrack: (id: string) => Promise<boolean>
+  editTrack: (id: string, patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic' | 'language'>>) => Promise<void>
   getByCategory: (category: AudioCategory) => Promise<AudioTrack[]>
 }
 
@@ -78,7 +54,7 @@ async function extractDuration(file: File): Promise<number | undefined> {
 
 // ── Provider ──────────────────────────────────────────────────────────────
 export function AudioLibraryProvider({ children }: { children: ReactNode }) {
-  const [allTracks, setAllTracks] = useState<AudioTrack[]>([])
+  const [tracks, setTracks] = useState<AudioTrack[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -87,7 +63,7 @@ export function AudioLibraryProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     try {
       const all = await getAllTracks()
-      setAllTracks(all)
+      setTracks(all)
     } catch (err) {
       console.error('[AudioLibrary] Failed to load tracks:', err)
     } finally {
@@ -99,19 +75,9 @@ export function AudioLibraryProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(() => { loadTracks() }, [loadTracks])
 
-  const tracks = useMemo(() => allTracks.filter(isTrackApproved), [allTracks])
-  const pendingTracks = useMemo(
-    () => allTracks.filter((t) => t.status === 'pending'),
-    [allTracks]
-  )
-  const pendingKidsTracks = useMemo(
-    () => pendingTracks.filter((t) => isKidsCategory(t.category) || t.source === 'kids-studio'),
-    [pendingTracks]
-  )
-
   const uploadTrack = useCallback(async (
     file: File,
-    metadata: UploadTrackMeta
+    metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; text?: string; language?: NasheedLanguage | string }
   ): Promise<boolean> => {
     setUploadError(null)
     if (!file.type.startsWith('audio/')) { setUploadError('Please select a valid audio file.'); return false }
@@ -122,13 +88,9 @@ export function AudioLibraryProvider({ children }: { children: ReactNode }) {
     try {
       const id = crypto.randomUUID()
       const duration = await extractDuration(file)
-      const { track } = await uploadAudioToCloud(file, id, {
-        ...metadata,
-        duration,
-        status: metadata.status || 'approved',
-        source: metadata.source || 'admin',
-      })
-      setAllTracks((prev) => [track, ...prev])
+      const { track } = await uploadAudioToCloud(file, id, { ...metadata, duration })
+      // Add to shared state immediately — all pages see it instantly
+      setTracks(prev => [track, ...prev])
       return true
     } catch (err: any) {
       const msg = err?.message || 'Upload failed. Please try again.'
@@ -149,7 +111,7 @@ export function AudioLibraryProvider({ children }: { children: ReactNode }) {
     const results: BulkUploadResult[] = []
 
     for (let i = 0; i < items.length; i++) {
-      const { file, title, category, reciter, topic, language, status, source } = items[i]
+      const { file, title, category, reciter, topic } = items[i]
       try {
         if (!file.type.startsWith('audio/')) {
           results.push({ fileName: file.name, success: false, error: 'Not a valid audio file' })
@@ -160,17 +122,8 @@ export function AudioLibraryProvider({ children }: { children: ReactNode }) {
         } else {
           const id = crypto.randomUUID()
           const duration = await extractDuration(file)
-          const { track } = await uploadAudioToCloud(file, id, {
-            title,
-            category,
-            reciter,
-            topic,
-            language,
-            duration,
-            status: status || 'approved',
-            source: source || 'admin',
-          })
-          setAllTracks((prev) => [track, ...prev])
+          const { track } = await uploadAudioToCloud(file, id, { title, category, reciter, topic, duration })
+          setTracks(prev => [track, ...prev])
           results.push({ fileName: file.name, success: true })
         }
       } catch (err: any) {
@@ -184,74 +137,31 @@ export function AudioLibraryProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const deleteTrackById = useCallback(async (id: string) => {
-    const track = allTracks.find((t) => t.id === id)
+    const track = tracks.find(t => t.id === id)
     if (track) {
       await deleteAudioFromCloud(track)
-      setAllTracks((prev) => prev.filter((t) => t.id !== id))
+      setTracks(prev => prev.filter(t => t.id !== id))
     }
-  }, [allTracks])
+  }, [tracks])
 
   const editTrack = useCallback(async (
     id: string,
-    patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic' | 'language' | 'status'>>
+    patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic' | 'language'>>
   ) => {
     try {
       await updateTrackInCloud(id, patch)
-      setAllTracks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)))
+      setTracks(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t))
     } catch (err) {
       console.error('[editTrack error]', err)
     }
   }, [])
-
-  const approveTrack = useCallback(async (id: string): Promise<boolean> => {
-    try {
-      await setTrackStatusInCloud(id, 'approved')
-      setAllTracks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'approved' as const } : t)))
-      return true
-    } catch (err) {
-      console.error('[approveTrack error]', err)
-      return false
-    }
-  }, [])
-
-  const rejectTrack = useCallback(async (id: string): Promise<boolean> => {
-    try {
-      const track = allTracks.find((t) => t.id === id)
-      if (!track) return false
-      // Reject = remove from library entirely
-      await deleteAudioFromCloud(track)
-      setAllTracks((prev) => prev.filter((t) => t.id !== id))
-      return true
-    } catch (err) {
-      console.error('[rejectTrack error]', err)
-      return false
-    }
-  }, [allTracks])
 
   const getByCategory = useCallback(async (category: AudioCategory) => {
     return getTracksByCategory(category)
   }, [])
 
   return (
-    <AudioLibraryContext.Provider
-      value={{
-        tracks,
-        allTracks,
-        pendingTracks,
-        pendingKidsTracks,
-        loading,
-        uploading,
-        uploadError,
-        refresh,
-        uploadTrack,
-        bulkUpload,
-        deleteTrackById,
-        editTrack,
-        approveTrack,
-        rejectTrack,
-        getByCategory,
-      }}
-    >
+    <AudioLibraryContext.Provider value={{ tracks, loading, uploading, uploadError, refresh, uploadTrack, bulkUpload, deleteTrackById, editTrack, getByCategory }}>
       {children}
     </AudioLibraryContext.Provider>
   )

@@ -1,13 +1,12 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Shield, Upload, Trash2, LogOut, CheckCircle, AlertCircle, FileAudio, X, Layers, Pencil, Save, FolderOpen, Clock, ChevronRight, Play, Pause, FileText, Search, Mic, Check, Ban } from 'lucide-react'
+import { Shield, Upload, Trash2, LogOut, CheckCircle, AlertCircle, FileAudio, X, Layers, Pencil, Save, FolderOpen, Clock, ChevronRight, Play, Pause, FileText, Search, Mic, Star } from 'lucide-react'
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
 import type { BulkUploadItem, BulkUploadResult } from '../hooks/useAudioLibrary'
 import { useAudioPlayer } from '../context/AudioPlayerContext'
 import { ADMIN_PASSWORD, ALL_CATEGORIES_LIST, QURAN_RECITERS, NASHEED_ARTISTS, TALKS_SPEAKERS, TALKS_TOPICS, AUDIOBOOK_AUTHORS, HADITH_NARRATORS, DUA_CATEGORIES } from '../constants/categories'
 import type { AudioCategory } from '../types'
 import type { AudioTrack } from '../types'
-import { isKidsCategory } from '../types'
 import { formatFileSize, formatDuration } from '../lib/storage'
 import { getAllDrafts, deleteDraft, getDraft, type RecordingDraft } from '../lib/indexedDb'
 
@@ -405,25 +404,11 @@ function EditModal({
 export default function AdminPage() {
   const navigate = useNavigate()
   const [authed, setAuthed] = useState(() => sessionStorage.getItem(SESSION_KEY) === '1')
-  const {
-    allTracks,
-    pendingKidsTracks,
-    loading,
-    uploading,
-    uploadError,
-    uploadTrack,
-    bulkUpload,
-    deleteTrackById,
-    editTrack,
-    approveTrack,
-    rejectTrack,
-    refresh,
-  } = useAudioLibrary()
+  const { tracks, loading, uploading, uploadError, uploadTrack, bulkUpload, deleteTrackById, editTrack, refresh } = useAudioLibrary()
   const { currentTrack, isPlaying, playFromList, togglePlay } = useAudioPlayer()
 
   // Edit modal state
   const [editingTrack, setEditingTrack] = useState<AudioTrack | null>(null)
-  const [moderatingId, setModeratingId] = useState<string | null>(null)
 
   // Manage uploads filters
   const [uploadSearch, setUploadSearch] = useState('')
@@ -465,7 +450,7 @@ export default function AdminPage() {
   }, [])
 
   const filteredUploads = useMemo(() => {
-    return allTracks.filter((t) => {
+    return tracks.filter((t) => {
       const matchesCat = uploadCategory === 'all' || t.category === uploadCategory
       const q = uploadSearch.trim().toLowerCase()
       const matchesSearch = !q
@@ -474,26 +459,14 @@ export default function AdminPage() {
         || (t.fileName || '').toLowerCase().includes(q)
       return matchesCat && matchesSearch
     })
-  }, [allTracks, uploadSearch, uploadCategory])
+  }, [tracks, uploadSearch, uploadCategory])
 
-  const handleApprove = async (id: string) => {
-    setModeratingId(id)
-    try {
-      await approveTrack(id)
-    } finally {
-      setModeratingId(null)
-    }
-  }
-
-  const handleReject = async (id: string, title: string) => {
-    if (!confirm(`Reject and delete “${title}”? This cannot be undone.`)) return
-    setModeratingId(id)
-    try {
-      await rejectTrack(id)
-    } finally {
-      setModeratingId(null)
-    }
-  }
+  const kidsTracks = useMemo(
+    () => tracks.filter((t) =>
+      t.category === 'kids-stories' || t.category === 'kids-quran' || t.category === 'kids-nasheeds'
+    ),
+    [tracks]
+  )
 
   const playDraft = (draft: RecordingDraft) => {
     let url = draftUrlRef.current.get(draft.id)
@@ -643,7 +616,7 @@ export default function AdminPage() {
     await deleteTrackById(id)
   }
 
-  const totalSize = allTracks.reduce((acc, t) => acc + (t.fileSize || 0), 0)
+  const totalSize = tracks.reduce((acc, t) => acc + t.fileSize, 0)
 
   if (!authed) return <LoginGate onLogin={() => setAuthed(true)} />
 
@@ -658,7 +631,7 @@ export default function AdminPage() {
           <div>
             <h1 className="text-2xl font-bold text-slate-800">Admin Dashboard</h1>
             <p className="text-slate-500 text-sm">
-              {allTracks.length} tracks · {pendingKidsTracks.length} pending kids · {formatFileSize(totalSize)} used
+              {tracks.length} tracks · {kidsTracks.length} kids · {formatFileSize(totalSize)} used
             </p>
           </div>
         </div>
@@ -948,36 +921,46 @@ export default function AdminPage() {
           )}
         </div>
 
-        {/* ── Kids recordings pending approval ─────────────────────────── */}
+        {/* ── Kids recordings (live in Kids Audio) ─────────────────────── */}
         <div className="bg-white border border-amber-200 rounded-2xl p-6 shadow-sm overflow-hidden mb-6">
           <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <Mic size={20} className="text-amber-500" />
-              Kids Recordings — Pending Approval
-              <span className="ml-1 text-sm font-normal text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                {pendingKidsTracks.length}
+              <Star size={20} className="text-amber-500" />
+              Kids Recordings
+              <span className="ml-1 text-sm font-normal text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                {kidsTracks.length}
               </span>
             </h2>
-            <button
-              type="button"
-              onClick={() => refresh()}
-              className="text-xs text-slate-400 hover:text-slate-700 px-3 py-1 border border-slate-200 rounded-lg hover:bg-slate-50"
-            >
-              Refresh
-            </button>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/kids"
+                className="text-xs font-medium text-amber-700 hover:text-amber-900 px-3 py-1.5 border border-amber-200 bg-amber-50 rounded-lg"
+              >
+                Open Kids Audio
+              </Link>
+              <button
+                type="button"
+                onClick={() => refresh()}
+                className="text-xs text-slate-400 hover:text-slate-700 px-3 py-1 border border-slate-200 rounded-lg hover:bg-slate-50"
+              >
+                Refresh
+              </button>
+            </div>
           </div>
+          <p className="text-xs text-slate-500 mb-4">
+            Kids Studio recordings go live on Kids Audio right away. Play or delete them here.
+          </p>
 
           {loading ? (
             <div className="text-center py-10 text-slate-400 text-sm">Loading…</div>
-          ) : pendingKidsTracks.length === 0 ? (
+          ) : kidsTracks.length === 0 ? (
             <div className="text-center py-10 text-slate-400 text-sm">
-              No kids recordings waiting for approval.
+              No kids recordings yet. Record one in Kids Studio.
             </div>
           ) : (
             <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
-              {pendingKidsTracks.map((track, index) => {
+              {kidsTracks.map((track, index) => {
                 const isActive = currentTrack?.id === track.id
-                const busy = moderatingId === track.id
                 return (
                   <div
                     key={track.id}
@@ -987,7 +970,7 @@ export default function AdminPage() {
                   >
                     <button
                       type="button"
-                      onClick={() => playFromList(track, pendingKidsTracks, index)}
+                      onClick={() => playFromList(track, kidsTracks, index)}
                       className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 shadow-sm transition-colors ${
                         isActive ? 'bg-amber-500 text-white' : 'bg-white border border-slate-200 text-amber-600 hover:bg-amber-50'
                       }`}
@@ -1003,26 +986,21 @@ export default function AdminPage() {
                       <p className="text-xs text-slate-400 truncate">
                         {track.reciter} · {ALL_CATEGORIES_LIST.find((c) => c.value === track.category)?.label}
                         {track.duration !== undefined ? ` · ${formatDuration(track.duration)}` : ''}
-                        {track.source ? ` · ${track.source}` : ''}
                       </p>
                     </div>
                     <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => handleApprove(track.id)}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 px-3 py-2 rounded-lg shrink-0"
-                      title="Approve — publish to Kids Audio"
+                      onClick={() => setEditingTrack(track)}
+                      className="text-slate-400 hover:text-violet-500 transition-colors shrink-0 p-1.5 rounded-lg hover:bg-violet-50"
+                      title="Edit"
                     >
-                      <Check size={14} /> Approve
+                      <Pencil size={15} />
                     </button>
                     <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => handleReject(track.id, track.title)}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 disabled:opacity-50 px-3 py-2 rounded-lg shrink-0"
-                      title="Reject and delete"
+                      onClick={() => handleDelete(track.id, track.title)}
+                      className="text-slate-400 hover:text-red-500 transition-colors shrink-0 p-1.5 rounded-lg hover:bg-red-50"
+                      title="Delete"
                     >
-                      <Ban size={14} /> Reject
+                      <Trash2 size={15} />
                     </button>
                   </div>
                 )
@@ -1036,7 +1014,7 @@ export default function AdminPage() {
           <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
             <h2 className="text-lg font-bold text-slate-800">
               Manage Uploads
-              <span className="ml-2 text-sm font-normal text-slate-400">({allTracks.length})</span>
+              <span className="ml-2 text-sm font-normal text-slate-400">({tracks.length})</span>
             </h2>
             <button
               type="button"
@@ -1074,15 +1052,12 @@ export default function AdminPage() {
             <div className="text-center py-12 text-slate-400 text-sm">Loading uploads…</div>
           ) : filteredUploads.length === 0 ? (
             <div className="text-center py-12 text-slate-400 text-sm">
-              {allTracks.length === 0 ? 'No uploads yet.' : 'No uploads match your search.'}
+              {tracks.length === 0 ? 'No uploads yet.' : 'No uploads match your search.'}
             </div>
           ) : (
             <div className="space-y-2 max-h-[560px] overflow-y-auto pr-1">
               {filteredUploads.map((track, index) => {
                 const isActive = currentTrack?.id === track.id
-                const status = track.status || 'approved'
-                const isPending = status === 'pending'
-                const isKids = isKidsCategory(track.category) || track.source === 'kids-studio'
                 return (
                   <div
                     key={track.id}
@@ -1104,19 +1079,7 @@ export default function AdminPage() {
                       {categoryEmoji(track.category)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <p className={`text-sm font-medium truncate ${isActive ? 'text-violet-700' : 'text-slate-800'}`}>{track.title}</p>
-                        {isPending && (
-                          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                            Pending
-                          </span>
-                        )}
-                        {isKids && !isPending && (
-                          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-sky-700 bg-sky-50 border border-sky-200 px-1.5 py-0.5 rounded">
-                            Kids
-                          </span>
-                        )}
-                      </div>
+                      <p className={`text-sm font-medium truncate ${isActive ? 'text-violet-700' : 'text-slate-800'}`}>{track.title}</p>
                       <p className="text-xs text-slate-400 truncate">
                         {track.reciter} · {ALL_CATEGORIES_LIST.find((c) => c.value === track.category)?.label}
                         {track.language ? ` · ${String(track.language)}` : ''}
@@ -1124,28 +1087,6 @@ export default function AdminPage() {
                       </p>
                     </div>
                     <span className="text-xs text-slate-400 shrink-0 hidden sm:block">{formatFileSize(track.fileSize)}</span>
-                    {isPending && (
-                      <>
-                        <button
-                          type="button"
-                          disabled={moderatingId === track.id}
-                          onClick={() => handleApprove(track.id)}
-                          className="text-emerald-600 hover:text-emerald-700 transition-colors shrink-0 p-1.5 rounded-lg hover:bg-emerald-50 disabled:opacity-50"
-                          title="Approve"
-                        >
-                          <Check size={15} />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={moderatingId === track.id}
-                          onClick={() => handleReject(track.id, track.title)}
-                          className="text-rose-500 hover:text-rose-600 transition-colors shrink-0 p-1.5 rounded-lg hover:bg-rose-50 disabled:opacity-50"
-                          title="Reject"
-                        >
-                          <Ban size={15} />
-                        </button>
-                      </>
-                    )}
                     <button
                       onClick={() => setEditingTrack(track)}
                       className="text-slate-400 hover:text-violet-500 transition-colors shrink-0 p-1.5 rounded-lg hover:bg-violet-50"

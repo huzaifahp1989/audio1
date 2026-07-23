@@ -1,8 +1,7 @@
-import type { AudioTrack, AudioCategory, TrackStatus } from '../types'
-import { isTrackApproved } from '../types'
+import type { AudioTrack, AudioCategory } from '../types'
 import { 
   storage, db, ref, uploadBytes, getDownloadURL, deleteObject,
-  collection, getDocs, deleteDoc, doc, query, orderBy, updateDoc, setDoc 
+  collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, updateDoc, setDoc 
 } from './firebase'
 
 const TRACKS_COLLECTION = 'tracks'
@@ -11,17 +10,7 @@ const TRACKS_COLLECTION = 'tracks'
 export async function uploadAudioToCloud(
   file: File, 
   id: string, 
-  metadata: {
-    title: string
-    category: AudioCategory
-    reciter: string
-    topic?: string
-    duration?: number
-    text?: string
-    language?: string
-    status?: TrackStatus
-    source?: string
-  }
+  metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; duration?: number; text?: string; language?: string }
 ): Promise<{ url: string; track: AudioTrack }> {
   const filename = `audio/${id}-${file.name}`
   const storageRef = ref(storage, filename)
@@ -45,8 +34,6 @@ export async function uploadAudioToCloud(
     mimeType: file.type,
     uploadedAt: Date.now(),
     audioUrl: downloadURL,
-    status: metadata.status || 'approved',
-    source: metadata.source || 'upload',
   }
   
   // Only add optional fields if they exist
@@ -83,40 +70,26 @@ export async function deleteAudioFromCloud(track: AudioTrack): Promise<void> {
     }
   }
   
-  // Delete from Firestore (doc id matches track.id for new uploads)
-  try {
-    await deleteDoc(doc(db, TRACKS_COLLECTION, track.id))
-  } catch {
-    // Fallback: scan if doc id differs from track.id (legacy)
-    const q = query(collection(db, TRACKS_COLLECTION))
-    const snapshot = await getDocs(q)
-    for (const d of snapshot.docs) {
-      const data = d.data() as AudioTrack
-      if (data.id === track.id) {
-        await deleteDoc(doc(db, TRACKS_COLLECTION, d.id))
-      }
+  // Delete from Firestore
+  const q = query(collection(db, TRACKS_COLLECTION))
+  const snapshot = await getDocs(q)
+  snapshot.forEach((d) => {
+    const data = d.data() as AudioTrack
+    if (data.id === track.id) {
+      deleteDoc(doc(db, TRACKS_COLLECTION, d.id))
     }
-  }
+  })
 }
 
 // Get all tracks from Firestore
 export async function getAllTracks(): Promise<AudioTrack[]> {
   const q = query(collection(db, TRACKS_COLLECTION), orderBy('uploadedAt', 'desc'))
   const snapshot = await getDocs(q)
-  return snapshot.docs.map((d) => {
-    const data = d.data() as AudioTrack
-    return {
-      ...data,
-      // Legacy tracks without status are treated as approved
-      status: data.status || 'approved',
-    }
-  })
+  return snapshot.docs.map(doc => doc.data() as AudioTrack)
 }
 
 export function getTracksByCategory(category: AudioCategory): Promise<AudioTrack[]> {
-  return getAllTracks().then((tracks) =>
-    tracks.filter((t) => t.category === category && isTrackApproved(t))
-  )
+  return getAllTracks().then(tracks => tracks.filter(t => t.category === category))
 }
 
 // Legacy localStorage functions (not used anymore)
@@ -134,17 +107,9 @@ export function deleteTrack(id: string): void {
 
 export async function updateTrackInCloud(
   id: string, 
-  patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic' | 'language' | 'status'>>
+  patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic' | 'language'>>
 ): Promise<void> {
-  // Prefer direct doc id (matches track.id for new uploads)
-  try {
-    await updateDoc(doc(db, TRACKS_COLLECTION, id), patch)
-    console.log('[Update] Track updated in Firestore:', id, patch)
-    return
-  } catch {
-    // Fallback: scan if doc id differs
-  }
-
+  // Find the Firestore document with matching track id
   const q = query(collection(db, TRACKS_COLLECTION))
   const snapshot = await getDocs(q)
   
@@ -158,13 +123,6 @@ export async function updateTrackInCloud(
   }
   
   throw new Error('Track not found')
-}
-
-export async function setTrackStatusInCloud(
-  id: string,
-  status: TrackStatus,
-): Promise<void> {
-  await updateTrackInCloud(id, { status })
 }
 
 export function formatFileSize(bytes: number): string {

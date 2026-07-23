@@ -334,8 +334,6 @@ export default function KidsRecordPage() {
         title: title.trim(),
         category,
         reciter: speaker.trim(),
-        status: 'pending',
-        source: 'kids-studio',
       })
       if (ok) {
         setUploaded(true)
@@ -358,11 +356,8 @@ export default function KidsRecordPage() {
       <div className="max-w-lg mx-auto px-4 py-16 text-center">
         <div className="text-5xl mb-4">🎉</div>
         <h1 className="text-2xl font-bold text-slate-800 mb-2">Awesome recording!</h1>
-        <p className="text-slate-500 mb-2">
-          “{title}” was sent for approval.
-        </p>
-        <p className="text-slate-400 text-sm mb-8">
-          An admin will review it before it appears in Kids Audio.
+        <p className="text-slate-500 mb-8">
+          “{title}” is saved in Kids Audio.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button

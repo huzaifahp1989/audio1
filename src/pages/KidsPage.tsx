@@ -115,7 +115,7 @@ export default function KidsPage() {
             <RefreshCw size={16} />
           </button>
           <Link
-            to="/kids/studio"
+            to="/kids-recordings/studio"
             className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-amber-500 to-orange-500 shadow-md hover:from-amber-600 hover:to-orange-600 transition-all"
           >
             <Mic size={18} />
@@ -202,7 +202,7 @@ export default function KidsPage() {
       {!loading && kidsTracks.length === 0 && (
         <div className="mt-6 text-center">
           <Link
-            to="/kids/studio"
+            to="/kids-recordings/studio"
             className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm text-amber-800 bg-amber-50 border border-amber-200 hover:bg-amber-100"
           >
             <Mic size={16} /> Go to Kids Studio

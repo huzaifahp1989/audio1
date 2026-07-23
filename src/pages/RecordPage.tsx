@@ -21,7 +21,7 @@ const LOAD_DRAFT_KEY = 'load_draft_id'
 
 const CATEGORY_ROUTES: Record<string, string> = {
   quran: '/quran', nasheeds: '/nasheeds', talks: '/talks',
-  'kids-stories': '/kids', 'kids-quran': '/kids', 'kids-nasheeds': '/kids',
+  'kids-stories': '/kids-recordings', 'kids-quran': '/kids-recordings', 'kids-nasheeds': '/kids-recordings',
 }
 
 interface AudioEdit { buffer: AudioBuffer; duration: number }

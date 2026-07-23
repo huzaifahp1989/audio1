@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AudioPlayerProvider } from './context/AudioPlayerContext'
 import { AudioLibraryProvider } from './hooks/useAudioLibrary'
 import Layout from './components/layout/Layout'
@@ -26,7 +26,11 @@ export default function App() {
               <Route path="/nasheeds" element={<NasheedsPage />} />
               <Route path="/talks" element={<TalksPage />} />
               <Route path="/kids" element={<KidsPage />} />
+              {/* Legacy / alternate kids library URLs */}
+              <Route path="/kids-recordings" element={<KidsPage />} />
+              <Route path="/kids-recording" element={<Navigate to="/kids-recordings" replace />} />
               <Route path="/kids/studio" element={<KidsRecordPage />} />
+              <Route path="/kids-recordings/studio" element={<KidsRecordPage />} />
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/record" element={<RecordPage />} />
               <Route path="/audiobooks" element={<AudiobookPage />} />

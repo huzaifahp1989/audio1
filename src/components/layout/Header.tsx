@@ -10,7 +10,7 @@ const NAV_LINKS = [
   { to: '/audiobooks', label: 'Audiobooks', icon: BookText },
   { to: '/hadith', label: 'Hadith', icon: Scroll },
   { to: '/dua', label: 'Dua', icon: Hand },
-  { to: '/kids', label: 'Kids', icon: Star },
+  { to: '/kids-recordings', label: 'Kids', icon: Star },
   { to: '/record', label: 'Record', icon: Mic },
   { to: '/admin', label: 'Admin', icon: Shield },
 ]
@@ -37,7 +37,12 @@ export default function Header() {
           {NAV_LINKS.map(({ to, label, icon: Icon }) => {
             const active = to === '/'
               ? location.pathname === '/'
-              : location.pathname === to || location.pathname.startsWith(to + '/')
+              : to === '/kids-recordings'
+                ? location.pathname === '/kids'
+                  || location.pathname === '/kids-recordings'
+                  || location.pathname.startsWith('/kids/')
+                  || location.pathname.startsWith('/kids-recordings')
+                : location.pathname === to || location.pathname.startsWith(to + '/')
             return (
               <Link
                 key={to}
@@ -70,7 +75,12 @@ export default function Header() {
           {NAV_LINKS.map(({ to, label, icon: Icon }) => {
             const active = to === '/'
               ? location.pathname === '/'
-              : location.pathname === to || location.pathname.startsWith(to + '/')
+              : to === '/kids-recordings'
+                ? location.pathname === '/kids'
+                  || location.pathname === '/kids-recordings'
+                  || location.pathname.startsWith('/kids/')
+                  || location.pathname.startsWith('/kids-recordings')
+                : location.pathname === to || location.pathname.startsWith(to + '/')
             return (
               <Link
                 key={to}

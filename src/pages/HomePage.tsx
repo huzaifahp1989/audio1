@@ -66,7 +66,7 @@ const HERO_CATEGORIES = [
     text: 'text-teal-700',
   },
   {
-    to: '/kids',
+    to: '/kids-recordings',
     label: 'Kids',
     desc: 'Fun educational audio for children',
     icon: Star,

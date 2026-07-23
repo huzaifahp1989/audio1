@@ -367,7 +367,7 @@ export default function KidsRecordPage() {
             Record another
           </button>
           <button
-            onClick={() => navigate(`/kids?tab=${category}`)}
+            onClick={() => navigate(`/kids-recordings?tab=${category}`)}
             className="px-5 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50"
           >
             Back to Kids
@@ -382,7 +382,7 @@ export default function KidsRecordPage() {
       {/* Header */}
       <div className="flex items-start gap-3 mb-6">
         <Link
-          to="/kids"
+          to="/kids-recordings"
           className="mt-1 p-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-amber-600 hover:border-amber-300"
           aria-label="Back to Kids"
         >

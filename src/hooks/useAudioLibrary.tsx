@@ -32,7 +32,7 @@ interface AudioLibraryState {
   uploading: boolean
   uploadError: string | null
   refresh: () => void
-  uploadTrack: (file: File, metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; text?: string; language?: NasheedLanguage | string }) => Promise<boolean>
+  uploadTrack: (file: File, metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; text?: string; language?: NasheedLanguage | string; source?: string }) => Promise<boolean>
   bulkUpload: (items: BulkUploadItem[], onProgress?: (done: number, total: number) => void) => Promise<BulkUploadResult[]>
   deleteTrackById: (id: string) => Promise<void>
   editTrack: (id: string, patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic' | 'language'>>) => Promise<void>
@@ -80,7 +80,7 @@ export function AudioLibraryProvider({ children }: { children: ReactNode }) {
 
   const uploadTrack = useCallback(async (
     file: File,
-    metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; text?: string; language?: NasheedLanguage | string }
+    metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; text?: string; language?: NasheedLanguage | string; source?: string }
   ): Promise<boolean> => {
     setUploadError(null)
     if (!file.type.startsWith('audio/')) { setUploadError('Please select a valid audio file.'); return false }

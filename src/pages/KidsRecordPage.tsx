@@ -334,6 +334,7 @@ export default function KidsRecordPage() {
         title: title.trim(),
         category,
         reciter: speaker.trim() || 'Kids Studio',
+        source: 'kids-studio',
       })
       if (ok) {
         setUploaded(true)

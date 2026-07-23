@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Mic, Square, Play, Pause, Upload, RotateCcw, Scissors, SkipBack, SkipForward, Volume2, Headphones, Crop, Split, Eraser, ZoomIn, ZoomOut, Sparkles, CheckCircle, Save, FolderOpen, Trash2, Clock, ChevronRight, X } from 'lucide-react'
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { saveDraft, getAllDrafts, deleteDraft, getDraft, type RecordingDraft } from '../lib/indexedDb'
 import { ALL_CATEGORIES_LIST, QURAN_RECITERS, NASHEED_ARTISTS, TALKS_SPEAKERS, TALKS_TOPICS } from '../constants/categories'
 import type { AudioCategory } from '../types'
+import { isKidsCategory } from '../types'
 import WaveSurfer from 'wavesurfer.js'
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions'
 import {
@@ -36,6 +37,12 @@ function formatDate(ts: number) {
 
 export default function RecordPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const initialCategory = ((): AudioCategory => {
+    const c = searchParams.get('category')
+    if (c && ALL_CATEGORIES_LIST.some((x) => x.value === c)) return c as AudioCategory
+    return 'talks'
+  })()
   const [authenticated, setAuthenticated] = useState(() => sessionStorage.getItem(RECORDER_SESSION_KEY) === '1')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -74,7 +81,7 @@ export default function RecordPage() {
 
   // Upload
   const [title, setTitle] = useState('')
-  const [category, setCategory] = useState<AudioCategory>('talks')
+  const [category, setCategory] = useState<AudioCategory>(initialCategory)
   const [reciter, setReciter] = useState('')
   const [customReciter, setCustomReciter] = useState('')
   const [topic, setTopic] = useState('')
@@ -388,8 +395,8 @@ export default function RecordPage() {
 
   // ── Upload ────────────────────────────────────────────────────────────────
   const getReciters = (cat: AudioCategory) => {
-    if (cat === 'quran') return QURAN_RECITERS
-    if (cat === 'nasheeds') return NASHEED_ARTISTS
+    if (cat === 'quran' || cat === 'kids-quran') return QURAN_RECITERS
+    if (cat === 'nasheeds' || cat === 'kids-nasheeds') return NASHEED_ARTISTS
     if (cat === 'talks') return TALKS_SPEAKERS
     return []
   }
@@ -464,6 +471,7 @@ export default function RecordPage() {
         category,
         reciter: effectiveReciter || 'Unknown Speaker',
         topic: category === 'talks' ? topic : undefined,
+        source: 'record',
       })
       
       if (ok) {
@@ -512,6 +520,9 @@ export default function RecordPage() {
   // ── Upload success ────────────────────────────────────────────────────────
   if (uploadedCategory) {
     const catLabel = ALL_CATEGORIES_LIST.find(c => c.value === uploadedCategory)?.label || uploadedCategory
+    const dest = isKidsCategory(uploadedCategory)
+      ? `/kids-recordings?tab=recorded`
+      : (CATEGORY_ROUTES[uploadedCategory] || '/')
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-slate-200 p-8 text-center">
@@ -519,7 +530,9 @@ export default function RecordPage() {
           <h2 className="text-2xl font-bold text-slate-800 mb-2">Uploaded!</h2>
           <p className="text-slate-500 mb-6">Your recording "<strong>{title}</strong>" has been saved to <strong>{catLabel}</strong>.</p>
           <div className="flex flex-col gap-3">
-            <button onClick={() => navigate(CATEGORY_ROUTES[uploadedCategory])} className="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold py-3 rounded-xl">Go to {catLabel} →</button>
+            <button onClick={() => navigate(dest)} className="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold py-3 rounded-xl">
+              {isKidsCategory(uploadedCategory) ? 'View in Kids Recordings →' : `Go to ${catLabel} →`}
+            </button>
             <button onClick={resetRecording} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-3 rounded-xl">Record Another</button>
           </div>
         </div>

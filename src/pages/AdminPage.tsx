@@ -7,6 +7,7 @@ import { useAudioPlayer } from '../context/AudioPlayerContext'
 import { ADMIN_PASSWORD, ALL_CATEGORIES_LIST, QURAN_RECITERS, NASHEED_ARTISTS, TALKS_SPEAKERS, TALKS_TOPICS, AUDIOBOOK_AUTHORS, HADITH_NARRATORS, DUA_CATEGORIES } from '../constants/categories'
 import type { AudioCategory } from '../types'
 import type { AudioTrack } from '../types'
+import { isKidsCategory, isRecordedTrack } from '../types'
 import { formatFileSize, formatDuration, formatViews } from '../lib/storage'
 import { getAllDrafts, deleteDraft, getDraft, type RecordingDraft } from '../lib/indexedDb'
 
@@ -463,9 +464,15 @@ export default function AdminPage() {
 
   const kidsTracks = useMemo(
     () => tracks.filter((t) =>
-      t.category === 'kids-stories' || t.category === 'kids-quran' || t.category === 'kids-nasheeds'
+      isKidsCategory(t.category)
+      || t.source === 'kids-studio'
       || /for children|\(kids\)|for kids|learn the quran for children/i.test(t.title || '')
     ),
+    [tracks]
+  )
+
+  const recordedUploads = useMemo(
+    () => tracks.filter(isRecordedTrack),
     [tracks]
   )
 
@@ -538,7 +545,7 @@ export default function AdminPage() {
   const [bulkResults, setBulkResults] = useState<BulkUploadResult[] | null>(null)
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null)
   const [activeTab, setActiveTab] = useState<'single' | 'bulk'>('single')
-  const [adminSection, setAdminSection] = useState<'upload' | 'manage' | 'kids' | 'drafts'>('manage')
+  const [adminSection, setAdminSection] = useState<'upload' | 'manage' | 'kids' | 'recorded' | 'drafts'>('manage')
   const bulkFileRef = useRef<HTMLInputElement>(null)
 
   const reciters = getRecitersForCategory(category)
@@ -650,6 +657,7 @@ export default function AdminPage() {
         {([
           { id: 'manage' as const, label: 'Manage Uploads', icon: Search, count: tracks.length },
           { id: 'kids' as const, label: 'Kids Recordings', icon: Star, count: kidsTracks.length },
+          { id: 'recorded' as const, label: 'Recorded (WAV)', icon: Mic, count: recordedUploads.length },
           { id: 'drafts' as const, label: 'Recording Drafts', icon: FolderOpen, count: drafts.length },
           { id: 'upload' as const, label: 'Upload Audio', icon: Upload, count: null },
         ]).map(({ id, label, icon: Icon, count }) => (
@@ -1029,6 +1037,90 @@ export default function AdminPage() {
                       onClick={() => setEditingTrack(track)}
                       className="text-slate-400 hover:text-violet-500 transition-colors shrink-0 p-1.5 rounded-lg hover:bg-violet-50"
                       title="Edit"
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(track.id, track.title)}
+                      className="text-slate-400 hover:text-red-500 transition-colors shrink-0 p-1.5 rounded-lg hover:bg-red-50"
+                      title="Delete"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {adminSection === 'recorded' && (
+        <div className="bg-white border border-violet-200 rounded-2xl p-6 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <Mic size={20} className="text-violet-500" />
+              Recorded uploads (WAV / Studio)
+              <span className="ml-1 text-sm font-normal text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full">
+                {recordedUploads.length}
+              </span>
+            </h2>
+            <button
+              type="button"
+              onClick={() => refresh()}
+              className="text-xs text-slate-400 hover:text-slate-700 px-3 py-1 border border-slate-200 rounded-lg hover:bg-slate-50"
+            >
+              Refresh
+            </button>
+          </div>
+          <p className="text-xs text-slate-500 mb-4">
+            Audio captured with Record or Kids Studio. If a kids recording was uploaded under Talks/Quran,
+            edit it here and set category to Kids – Stories / Quran / Nasheeds.
+          </p>
+
+          {loading ? (
+            <div className="text-center py-10 text-slate-400 text-sm">Loading…</div>
+          ) : recordedUploads.length === 0 ? (
+            <div className="text-center py-10 text-slate-400 text-sm">
+              No recorded WAV/WebM uploads found yet.
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
+              {recordedUploads.map((track, index) => {
+                const isActive = currentTrack?.id === track.id
+                return (
+                  <div
+                    key={track.id}
+                    className={`flex items-center gap-3 border rounded-xl px-4 py-3 transition-colors ${
+                      isActive ? 'bg-violet-50 border-violet-200' : 'bg-slate-50 border-slate-100'
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => playFromList(track, recordedUploads, index)}
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 shadow-sm transition-colors ${
+                        isActive ? 'bg-violet-600 text-white' : 'bg-white border border-slate-200 text-violet-600 hover:bg-violet-50'
+                      }`}
+                      title={isActive && isPlaying ? 'Pause' : 'Play'}
+                    >
+                      {isActive && isPlaying ? <Pause size={15} /> : <Play size={15} className="ml-0.5" />}
+                    </button>
+                    <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 text-sm shadow-sm">
+                      {categoryEmoji(track.category)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-sm font-medium truncate ${isActive ? 'text-violet-700' : 'text-slate-800'}`}>{track.title}</p>
+                      <p className="text-xs text-slate-400 truncate">
+                        {track.reciter || '—'} · {ALL_CATEGORIES_LIST.find((c) => c.value === track.category)?.label}
+                        {track.source ? ` · ${track.source}` : ''}
+                        {track.mimeType ? ` · ${track.mimeType}` : ''}
+                        {` · ${formatViews(track.views ?? 0)} views`}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setEditingTrack(track)}
+                      className="text-slate-400 hover:text-violet-500 transition-colors shrink-0 p-1.5 rounded-lg hover:bg-violet-50"
+                      title="Edit category / details"
                     >
                       <Pencil size={15} />
                     </button>

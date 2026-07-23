@@ -10,7 +10,16 @@ const TRACKS_COLLECTION = 'tracks'
 export async function uploadAudioToCloud(
   file: File, 
   id: string, 
-  metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; duration?: number; text?: string; language?: string }
+  metadata: {
+    title: string
+    category: AudioCategory
+    reciter: string
+    topic?: string
+    duration?: number
+    text?: string
+    language?: string
+    source?: string
+  }
 ): Promise<{ url: string; track: AudioTrack }> {
   const filename = `audio/${id}-${file.name}`
   const storageRef = ref(storage, filename)
@@ -35,6 +44,7 @@ export async function uploadAudioToCloud(
     uploadedAt: Date.now(),
     audioUrl: downloadURL,
     views: 0,
+    source: metadata.source || 'upload',
   }
   
   // Only add optional fields if they exist

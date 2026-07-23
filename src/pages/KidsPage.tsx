@@ -5,16 +5,14 @@ import { useAudioLibrary } from '../hooks/useAudioLibrary'
 import TrackList from '../components/TrackList'
 import { KIDS_CATEGORIES } from '../constants/categories'
 import type { AudioCategory, AudioTrack } from '../types'
+import { isKidsCategory, isRecordedTrack } from '../types'
 
-type KidsTab = 'all' | AudioCategory
-
-function isKidsCategory(category: string): boolean {
-  return category === 'kids-stories' || category === 'kids-quran' || category === 'kids-nasheeds'
-}
+type KidsTab = 'all' | 'recorded' | AudioCategory
 
 /** Detect kids content even if it was uploaded under quran/nasheeds by mistake. */
 function looksLikeKidsTrack(track: AudioTrack): boolean {
   if (isKidsCategory(track.category)) return true
+  if (track.source === 'kids-studio') return true
   const title = (track.title || '').toLowerCase()
   const file = (track.fileName || '').toLowerCase()
   const hay = `${title} ${file}`
@@ -44,13 +42,24 @@ function kidsTabForTrack(track: AudioTrack): AudioCategory {
   return 'kids-quran'
 }
 
+function normalizeKidsTrack(t: AudioTrack): AudioTrack {
+  if (isKidsCategory(t.category)) {
+    return { ...t, reciter: t.reciter?.trim() || 'Kids Audio' }
+  }
+  return {
+    ...t,
+    category: kidsTabForTrack(t),
+    reciter: t.reciter?.trim() || 'Kids Audio',
+  }
+}
+
 export default function KidsPage() {
   const { tracks, loading, refresh } = useAudioLibrary()
   const [searchParams, setSearchParams] = useSearchParams()
   const tabParam = searchParams.get('tab')
 
   const initialTab = ((): KidsTab => {
-    if (tabParam === 'all') return 'all'
+    if (tabParam === 'all' || tabParam === 'recorded') return tabParam
     if (tabParam && isKidsCategory(tabParam)) return tabParam as AudioCategory
     return 'all'
   })()
@@ -58,25 +67,36 @@ export default function KidsPage() {
   const [activeTab, setActiveTab] = useState<KidsTab>(initialTab)
 
   useEffect(() => {
-    if (tabParam === 'all' || (tabParam && isKidsCategory(tabParam))) {
+    if (tabParam === 'all' || tabParam === 'recorded' || (tabParam && isKidsCategory(tabParam))) {
       setActiveTab(tabParam as KidsTab)
     }
   }, [tabParam])
 
   const kidsTracks = useMemo(() => {
+    return tracks.filter(looksLikeKidsTrack).map(normalizeKidsTrack)
+  }, [tracks])
+
+  /** Recorded via Kids Studio or Record page — include misfiled WAV/WebM uploads. */
+  const recordedTracks = useMemo(() => {
     return tracks
-      .filter(looksLikeKidsTrack)
-      .map((t) =>
-        isKidsCategory(t.category)
-          ? t
-          : { ...t, category: kidsTabForTrack(t), reciter: t.reciter?.trim() || 'Kids Audio' }
-      )
+      .filter((t) => {
+        if (!isRecordedTrack(t)) return false
+        // Kids-tagged, kids-studio source, or any recorded file that looks like kids content
+        return (
+          isKidsCategory(t.category) ||
+          t.source === 'kids-studio' ||
+          t.source === 'record' ||
+          looksLikeKidsTrack(t)
+        )
+      })
+      .map(normalizeKidsTrack)
   }, [tracks])
 
   const filteredTracks = useMemo(() => {
     if (activeTab === 'all') return kidsTracks
+    if (activeTab === 'recorded') return recordedTracks
     return kidsTracks.filter((t) => t.category === activeTab)
-  }, [kidsTracks, activeTab])
+  }, [kidsTracks, recordedTracks, activeTab])
 
   const selectTab = (tab: KidsTab) => {
     setActiveTab(tab)
@@ -86,7 +106,9 @@ export default function KidsPage() {
   const activeMeta =
     activeTab === 'all'
       ? { label: 'All Kids Audio', emoji: '⭐', color: 'from-amber-500 to-orange-500' }
-      : KIDS_CATEGORIES.find((c) => c.id === activeTab)!
+      : activeTab === 'recorded'
+        ? { label: 'Your Recordings', emoji: '🎙️', color: 'from-violet-500 to-fuchsia-500' }
+        : KIDS_CATEGORIES.find((c) => c.id === activeTab)!
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
@@ -101,7 +123,7 @@ export default function KidsPage() {
             <p className="text-slate-500 text-sm mt-0.5">
               {loading
                 ? 'Loading kids recordings…'
-                : `${kidsTracks.length} recording${kidsTracks.length !== 1 ? 's' : ''} · stories, Quran & nasheeds`}
+                : `${kidsTracks.length} in library · ${recordedTracks.length} recorded`}
             </p>
           </div>
         </div>
@@ -115,12 +137,18 @@ export default function KidsPage() {
             <RefreshCw size={16} />
           </button>
           <Link
+            to="/record?category=kids-stories"
+            className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm text-violet-700 bg-violet-50 border border-violet-200 hover:bg-violet-100"
+          >
+            <Mic size={16} />
+            Record page
+          </Link>
+          <Link
             to="/kids-recordings/studio"
             className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-amber-500 to-orange-500 shadow-md hover:from-amber-600 hover:to-orange-600 transition-all"
           >
             <Mic size={18} />
             Kids Studio
-            <span className="text-white/80 font-normal hidden sm:inline">· record & effects</span>
           </Link>
         </div>
       </div>
@@ -144,6 +172,25 @@ export default function KidsPage() {
             }`}
           >
             {kidsTracks.length}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => selectTab('recorded')}
+          className={`flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all duration-200 ${
+            activeTab === 'recorded'
+              ? 'bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-md'
+              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'
+          }`}
+        >
+          <span className="text-base">🎙️</span>
+          Your Recordings
+          <span
+            className={`text-xs px-2 py-0.5 rounded-full ${
+              activeTab === 'recorded' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+            }`}
+          >
+            {recordedTracks.length}
           </span>
         </button>
         {KIDS_CATEGORIES.map(({ id, label, emoji, color }) => {
@@ -186,28 +233,44 @@ export default function KidsPage() {
         </div>
       </div>
 
+      {activeTab === 'recorded' && !loading && recordedTracks.length === 0 && (
+        <div className="mb-6 rounded-xl border border-violet-200 bg-violet-50 px-4 py-4 text-sm text-violet-800">
+          <p className="font-semibold mb-1">No uploaded recordings yet</p>
+          <p className="text-violet-700 mb-3">
+            Use <strong>Kids Studio</strong> or the <strong>Record</strong> page and choose a Kids category
+            (Stories / Kids Quran / Kids Nasheeds), then Upload — not only Save Draft.
+            Drafts stay on this device only and won’t appear here.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to="/kids-recordings/studio"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 text-white font-semibold text-xs"
+            >
+              Open Kids Studio
+            </Link>
+            <Link
+              to="/record?category=kids-stories"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-violet-600 text-white font-semibold text-xs"
+            >
+              Open Record (Kids Stories)
+            </Link>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="text-center py-20 text-slate-400 text-sm">Loading kids audio…</div>
       ) : (
         <TrackList
           tracks={filteredTracks}
           emptyMessage={
-            kidsTracks.length === 0
-              ? 'No kids recordings yet — open Kids Studio to make the first one!'
-              : `No ${activeMeta.label} yet — try All, or open Kids Studio to record one.`
+            activeTab === 'recorded'
+              ? 'No recordings uploaded yet — record in Kids Studio or Record, pick a Kids category, then Upload.'
+              : kidsTracks.length === 0
+                ? 'No kids recordings yet — open Kids Studio to make the first one!'
+                : `No ${activeMeta.label} yet — try All, or open Kids Studio to record one.`
           }
         />
-      )}
-
-      {!loading && kidsTracks.length === 0 && (
-        <div className="mt-6 text-center">
-          <Link
-            to="/kids-recordings/studio"
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm text-amber-800 bg-amber-50 border border-amber-200 hover:bg-amber-100"
-          >
-            <Mic size={16} /> Go to Kids Studio
-          </Link>
-        </div>
       )}
     </div>
   )

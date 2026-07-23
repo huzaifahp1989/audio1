@@ -27,4 +27,18 @@ export interface AudioTrack {
   uploadedAt: number
   audioUrl?: string  // Cloud storage URL
   views?: number     // Play/view count
+  /** Where the track was created: kids-studio, record, admin, upload */
+  source?: string
+}
+
+export function isKidsCategory(category: AudioCategory | string): boolean {
+  return category === 'kids-stories' || category === 'kids-quran' || category === 'kids-nasheeds'
+}
+
+/** Recorded via Kids Studio or Record page (not a library MP3 upload). */
+export function isRecordedTrack(track: AudioTrack): boolean {
+  if (track.source === 'kids-studio' || track.source === 'record') return true
+  const mime = (track.mimeType || '').toLowerCase()
+  const file = (track.fileName || '').toLowerCase()
+  return mime.includes('wav') || mime.includes('webm') || file.endsWith('.wav') || file.endsWith('.webm')
 }

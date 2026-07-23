@@ -141,14 +141,14 @@ export default function KidsPage() {
             className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm text-violet-700 bg-violet-50 border border-violet-200 hover:bg-violet-100"
           >
             <Mic size={16} />
-            Record page
+            Adult Record
           </Link>
           <Link
             to="/kids-recordings/studio"
             className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-amber-500 to-orange-500 shadow-md hover:from-amber-600 hover:to-orange-600 transition-all"
           >
             <Mic size={18} />
-            Kids Studio
+            Kids Record
           </Link>
         </div>
       </div>
@@ -237,22 +237,14 @@ export default function KidsPage() {
         <div className="mb-6 rounded-xl border border-violet-200 bg-violet-50 px-4 py-4 text-sm text-violet-800">
           <p className="font-semibold mb-1">No uploaded recordings yet</p>
           <p className="text-violet-700 mb-3">
-            Use <strong>Kids Studio</strong> or the <strong>Record</strong> page and choose a Kids category
-            (Stories / Kids Quran / Kids Nasheeds), then Upload — not only Save Draft.
-            Drafts stay on this device only and won’t appear here.
+            Open <strong>Kids Record</strong>, enter name and age, record your voice, then tap Save.
           </p>
           <div className="flex flex-wrap gap-2">
             <Link
               to="/kids-recordings/studio"
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 text-white font-semibold text-xs"
             >
-              Open Kids Studio
-            </Link>
-            <Link
-              to="/record?category=kids-stories"
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-violet-600 text-white font-semibold text-xs"
-            >
-              Open Record (Kids Stories)
+              Open Kids Record
             </Link>
           </div>
         </div>
@@ -265,10 +257,10 @@ export default function KidsPage() {
           tracks={filteredTracks}
           emptyMessage={
             activeTab === 'recorded'
-              ? 'No recordings uploaded yet — record in Kids Studio or Record, pick a Kids category, then Upload.'
+              ? 'No recordings yet — open Kids Record, add name & age, then save.'
               : kidsTracks.length === 0
-                ? 'No kids recordings yet — open Kids Studio to make the first one!'
-                : `No ${activeMeta.label} yet — try All, or open Kids Studio to record one.`
+                ? 'No kids recordings yet — open Kids Record to make the first one!'
+                : `No ${activeMeta.label} yet — try All, or open Kids Record.`
           }
         />
       )}

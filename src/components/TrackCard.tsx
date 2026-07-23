@@ -87,6 +87,7 @@ export default function TrackCard({ track, tracks, index }: TrackCardProps) {
               className="text-xs text-slate-500 mt-0.5 truncate"
             >
               {track.reciter}
+              {track.topic && /^age\s*\d+/i.test(track.topic) ? ` · ${track.topic}` : ''}
             </p>
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               {(() => {

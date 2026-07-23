@@ -1054,14 +1054,14 @@ export default function AdminPage() {
             </div>
           </div>
           <p className="text-xs text-slate-500 mb-4">
-            Kids Studio recordings go live on Kids Audio right away. Play or delete them here.
+            Kids Record uploads go live on Kids Audio right away. Play or delete them here.
           </p>
 
           {loading ? (
             <div className="text-center py-10 text-slate-400 text-sm">Loading…</div>
           ) : kidsTracks.length === 0 ? (
             <div className="text-center py-10 text-slate-400 text-sm">
-              No kids recordings yet. Record one in Kids Studio.
+              No kids recordings yet. Record one in Kids Record.
             </div>
           ) : (
             <div className="space-y-2 max-h-[55vh] sm:max-h-[420px] overflow-y-auto pr-1">
@@ -1136,7 +1136,7 @@ export default function AdminPage() {
             </button>
           </div>
           <p className="text-xs text-slate-500 mb-4">
-            Audio captured with Record or Kids Studio. If a kids recording was uploaded under Talks/Quran,
+            Audio captured with Kids Record or the Record page. If a kids recording was uploaded under Talks/Quran,
             edit it here and set category to Kids – Stories / Quran / Nasheeds.
           </p>
 

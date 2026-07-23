@@ -878,6 +878,11 @@ export default function RecordPage() {
                   <select value={category} onChange={e => { setCategory(e.target.value as AudioCategory); setReciter(''); setTopic('') }} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-sm">
                     {ALL_CATEGORIES_LIST.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
                   </select>
+                  {isKidsCategory(category) && (
+                    <p className="text-xs text-amber-700 mt-1.5 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5">
+                      Kids category selected — after upload it will appear under Kids → Your Recordings.
+                    </p>
+                  )}
                 </div>
                 {reciters.length > 0 && (
                   <div>

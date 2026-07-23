@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react'
 import type { AudioTrack } from '../types'
+import { useAudioLibrary } from '../hooks/useAudioLibrary'
 
 interface PlayerState {
   currentTrack: AudioTrack | null
@@ -25,6 +26,7 @@ const AudioPlayerContext = createContext<PlayerState | null>(null)
 
 export function AudioPlayerProvider({ children }: { children: React.ReactNode }) {
   const audioRef = useRef<HTMLAudioElement>(new Audio())
+  const { recordTrackView } = useAudioLibrary()
 
   const [currentTrack, setCurrentTrack] = useState<AudioTrack | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -53,11 +55,12 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
 
     audio.src = audioUrl
     audio.volume = volume
-    setCurrentTrack(track)
+    setCurrentTrack({ ...track, views: (track.views || 0) + 1 })
     setCurrentTime(0)
     setDuration(0)
+    recordTrackView(track.id)
     await audio.play()
-  }, [volume])
+  }, [volume, recordTrackView])
 
   useEffect(() => {
     const audio = audioRef.current

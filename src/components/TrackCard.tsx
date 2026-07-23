@@ -1,8 +1,8 @@
 import React from 'react'
-import { Play, Pause, Music, SkipBack, SkipForward, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Play, Pause, Music, SkipBack, SkipForward, ChevronLeft, ChevronRight, Eye } from 'lucide-react'
 import type { AudioTrack } from '../types'
 import { useAudioPlayer } from '../context/AudioPlayerContext'
-import { formatDuration, formatFileSize } from '../lib/storage'
+import { formatDuration, formatFileSize, formatViews } from '../lib/storage'
 
 interface TrackCardProps {
   track: AudioTrack
@@ -13,6 +13,7 @@ interface TrackCardProps {
 export default function TrackCard({ track, tracks, index }: TrackCardProps) {
   const { currentTrack, isPlaying, currentTime, duration, playFromList, togglePlay, seek } = useAudioPlayer()
   const isActive = currentTrack?.id === track.id
+  const views = track.views ?? 0
 
   const canPrev = index > 0
   const canNext = index < tracks.length - 1
@@ -95,6 +96,13 @@ export default function TrackCard({ track, tracks, index }: TrackCardProps) {
                 if (lang === 'urdu') return <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100">Urdu</span>
                 return null
               })()}
+              <span
+                className="inline-flex items-center gap-1 text-xs text-slate-500 tabular-nums"
+                title={`${views} view${views === 1 ? '' : 's'}`}
+              >
+                <Eye size={12} className="text-slate-400" />
+                {formatViews(views)}
+              </span>
               {track.duration !== undefined && (
                 <span className="text-xs text-slate-400 tabular-nums">{formatDuration(track.duration)}</span>
               )}

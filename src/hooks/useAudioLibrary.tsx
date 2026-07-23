@@ -1,9 +1,10 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react'
 import type { AudioTrack, AudioCategory, NasheedLanguage } from '../types'
 import {
   uploadAudioToCloud,
   deleteAudioFromCloud,
   updateTrackInCloud,
+  incrementTrackViews,
   getAllTracks,
   getTracksByCategory,
 } from '../lib/storage'
@@ -35,6 +36,8 @@ interface AudioLibraryState {
   bulkUpload: (items: BulkUploadItem[], onProgress?: (done: number, total: number) => void) => Promise<BulkUploadResult[]>
   deleteTrackById: (id: string) => Promise<void>
   editTrack: (id: string, patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic' | 'language'>>) => Promise<void>
+  /** Record a play/view for a track (increments once per track per session) */
+  recordTrackView: (id: string) => void
   getByCategory: (category: AudioCategory) => Promise<AudioTrack[]>
 }
 
@@ -156,12 +159,31 @@ export function AudioLibraryProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const viewedThisSession = useRef<Set<string>>(new Set())
+
+  const recordTrackView = useCallback((id: string) => {
+    if (!id || id.startsWith('draft-')) return
+    if (viewedThisSession.current.has(id)) return
+    viewedThisSession.current.add(id)
+
+    // Optimistic local bump
+    setTracks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, views: (t.views || 0) + 1 } : t))
+    )
+
+    incrementTrackViews(id).catch((err) => {
+      console.error('[recordTrackView error]', err)
+      // Allow retry later if cloud write failed
+      viewedThisSession.current.delete(id)
+    })
+  }, [])
+
   const getByCategory = useCallback(async (category: AudioCategory) => {
     return getTracksByCategory(category)
   }, [])
 
   return (
-    <AudioLibraryContext.Provider value={{ tracks, loading, uploading, uploadError, refresh, uploadTrack, bulkUpload, deleteTrackById, editTrack, getByCategory }}>
+    <AudioLibraryContext.Provider value={{ tracks, loading, uploading, uploadError, refresh, uploadTrack, bulkUpload, deleteTrackById, editTrack, recordTrackView, getByCategory }}>
       {children}
     </AudioLibraryContext.Provider>
   )

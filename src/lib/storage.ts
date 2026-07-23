@@ -1,7 +1,7 @@
 import type { AudioTrack, AudioCategory } from '../types'
 import { 
   storage, db, ref, uploadBytes, getDownloadURL, deleteObject,
-  collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, updateDoc, setDoc 
+  collection, getDocs, deleteDoc, doc, query, orderBy, updateDoc, setDoc, increment 
 } from './firebase'
 
 const TRACKS_COLLECTION = 'tracks'
@@ -34,6 +34,7 @@ export async function uploadAudioToCloud(
     mimeType: file.type,
     uploadedAt: Date.now(),
     audioUrl: downloadURL,
+    views: 0,
   }
   
   // Only add optional fields if they exist
@@ -71,25 +72,56 @@ export async function deleteAudioFromCloud(track: AudioTrack): Promise<void> {
   }
   
   // Delete from Firestore
-  const q = query(collection(db, TRACKS_COLLECTION))
-  const snapshot = await getDocs(q)
-  snapshot.forEach((d) => {
-    const data = d.data() as AudioTrack
-    if (data.id === track.id) {
-      deleteDoc(doc(db, TRACKS_COLLECTION, d.id))
+  try {
+    await deleteDoc(doc(db, TRACKS_COLLECTION, track.id))
+  } catch {
+    const q = query(collection(db, TRACKS_COLLECTION))
+    const snapshot = await getDocs(q)
+    for (const d of snapshot.docs) {
+      const data = d.data() as AudioTrack
+      if (data.id === track.id) {
+        await deleteDoc(doc(db, TRACKS_COLLECTION, d.id))
+      }
     }
-  })
+  }
 }
 
 // Get all tracks from Firestore
 export async function getAllTracks(): Promise<AudioTrack[]> {
   const q = query(collection(db, TRACKS_COLLECTION), orderBy('uploadedAt', 'desc'))
   const snapshot = await getDocs(q)
-  return snapshot.docs.map(doc => doc.data() as AudioTrack)
+  return snapshot.docs.map((d) => {
+    const data = d.data() as AudioTrack
+    return {
+      ...data,
+      views: typeof data.views === 'number' ? data.views : 0,
+    }
+  })
 }
 
 export function getTracksByCategory(category: AudioCategory): Promise<AudioTrack[]> {
   return getAllTracks().then(tracks => tracks.filter(t => t.category === category))
+}
+
+/** Increment play/view count for a track. */
+export async function incrementTrackViews(trackId: string): Promise<void> {
+  try {
+    await updateDoc(doc(db, TRACKS_COLLECTION, trackId), { views: increment(1) })
+    return
+  } catch {
+    // Fallback when Firestore doc id differs from track.id
+  }
+
+  const q = query(collection(db, TRACKS_COLLECTION))
+  const snapshot = await getDocs(q)
+  for (const d of snapshot.docs) {
+    const data = d.data() as AudioTrack
+    if (data.id === trackId) {
+      await updateDoc(doc(db, TRACKS_COLLECTION, d.id), { views: increment(1) })
+      return
+    }
+  }
+  throw new Error('Track not found')
 }
 
 // Legacy localStorage functions (not used anymore)
@@ -109,7 +141,15 @@ export async function updateTrackInCloud(
   id: string, 
   patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic' | 'language'>>
 ): Promise<void> {
-  // Find the Firestore document with matching track id
+  // Prefer direct doc id
+  try {
+    await updateDoc(doc(db, TRACKS_COLLECTION, id), patch)
+    console.log('[Update] Track updated in Firestore:', id, patch)
+    return
+  } catch {
+    // Fallback: scan if doc id differs
+  }
+
   const q = query(collection(db, TRACKS_COLLECTION))
   const snapshot = await getDocs(q)
   
@@ -135,4 +175,11 @@ export function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
   return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+export function formatViews(views: number): string {
+  if (views < 1000) return String(views)
+  if (views < 10000) return `${(views / 1000).toFixed(1).replace(/\.0$/, '')}k`
+  if (views < 1000000) return `${Math.round(views / 1000)}k`
+  return `${(views / 1000000).toFixed(1).replace(/\.0$/, '')}M`
 }

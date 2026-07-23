@@ -26,4 +26,5 @@ export interface AudioTrack {
   mimeType: string
   uploadedAt: number
   audioUrl?: string  // Cloud storage URL
+  views?: number     // Play/view count
 }

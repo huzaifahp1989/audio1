@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Play, Pause, Volume2, VolumeX, X, Minus, Maximize2, GripHorizontal, SkipBack, SkipForward, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Play, Pause, Volume2, VolumeX, X, Minus, Maximize2, GripHorizontal, SkipBack, SkipForward, ChevronLeft, ChevronRight, Eye } from 'lucide-react'
 import { useAudioPlayer } from '../context/AudioPlayerContext'
-import { formatDuration } from '../lib/storage'
+import { formatDuration, formatViews } from '../lib/storage'
 
 export default function AudioPlayer() {
   const { currentTrack, isPlaying, currentTime, duration, volume, togglePlay, seek, setVolume, stopTrack, playNext, playPrev, hasNext, hasPrev } = useAudioPlayer()
@@ -167,7 +167,12 @@ export default function AudioPlayer() {
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-slate-800 truncate leading-tight">{currentTrack.title}</p>
-          <p className="text-xs text-violet-500 font-medium truncate mt-0.5">{currentTrack.reciter}</p>
+          <p className="text-xs text-violet-500 font-medium truncate mt-0.5 flex items-center gap-2">
+            <span className="truncate">{currentTrack.reciter}</span>
+            <span className="inline-flex items-center gap-1 text-slate-400 shrink-0">
+              <Eye size={11} /> {formatViews(currentTrack.views ?? 0)}
+            </span>
+          </p>
           <p className="text-xs text-slate-400 truncate capitalize">{currentTrack.category}</p>
         </div>
       </div>

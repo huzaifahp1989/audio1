@@ -1,13 +1,13 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Shield, Upload, Trash2, LogOut, CheckCircle, AlertCircle, FileAudio, X, Layers, Pencil, Save, FolderOpen, Clock, ChevronRight, Play, Pause, FileText, Search, Mic, Star } from 'lucide-react'
+import { Shield, Upload, Trash2, LogOut, CheckCircle, AlertCircle, FileAudio, X, Layers, Pencil, Save, FolderOpen, Clock, ChevronRight, Play, Pause, FileText, Search, Mic, Star, Eye } from 'lucide-react'
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
 import type { BulkUploadItem, BulkUploadResult } from '../hooks/useAudioLibrary'
 import { useAudioPlayer } from '../context/AudioPlayerContext'
 import { ADMIN_PASSWORD, ALL_CATEGORIES_LIST, QURAN_RECITERS, NASHEED_ARTISTS, TALKS_SPEAKERS, TALKS_TOPICS, AUDIOBOOK_AUTHORS, HADITH_NARRATORS, DUA_CATEGORIES } from '../constants/categories'
 import type { AudioCategory } from '../types'
 import type { AudioTrack } from '../types'
-import { formatFileSize, formatDuration } from '../lib/storage'
+import { formatFileSize, formatDuration, formatViews } from '../lib/storage'
 import { getAllDrafts, deleteDraft, getDraft, type RecordingDraft } from '../lib/indexedDb'
 
 const SESSION_KEY = 'admin_authenticated'
@@ -1022,6 +1022,7 @@ export default function AdminPage() {
                       <p className="text-xs text-slate-400 truncate">
                         {track.reciter} · {ALL_CATEGORIES_LIST.find((c) => c.value === track.category)?.label}
                         {track.duration !== undefined ? ` · ${formatDuration(track.duration)}` : ''}
+                        {` · ${formatViews(track.views ?? 0)} views`}
                       </p>
                     </div>
                     <button
@@ -1123,6 +1124,9 @@ export default function AdminPage() {
                         {track.duration !== undefined ? ` · ${formatDuration(track.duration)}` : ''}
                       </p>
                     </div>
+                    <span className="text-xs text-slate-500 shrink-0 hidden sm:inline-flex items-center gap-1" title="Views">
+                      <Eye size={12} /> {formatViews(track.views ?? 0)}
+                    </span>
                     <span className="text-xs text-slate-400 shrink-0 hidden sm:block">{formatFileSize(track.fileSize)}</span>
                     <button
                       onClick={() => setEditingTrack(track)}

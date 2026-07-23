@@ -1064,7 +1064,7 @@ export default function AdminPage() {
               No kids recordings yet. Record one in Kids Studio.
             </div>
           ) : (
-            <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-[55vh] sm:max-h-[420px] overflow-y-auto pr-1">
               {kidsTracks.map((track, index) => {
                 const isActive = currentTrack?.id === track.id
                 return (
@@ -1147,7 +1147,7 @@ export default function AdminPage() {
               No recorded WAV/WebM uploads found yet.
             </div>
           ) : (
-            <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-[55vh] sm:max-h-[520px] overflow-y-auto pr-1">
               {recordedUploads.map((track, index) => {
                 const isActive = currentTrack?.id === track.id
                 return (
@@ -1247,7 +1247,7 @@ export default function AdminPage() {
               {tracks.length === 0 ? 'No uploads yet.' : 'No uploads match your search.'}
             </div>
           ) : (
-            <div className="space-y-2 max-h-[560px] overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-[55vh] sm:max-h-[560px] overflow-y-auto pr-1">
               {filteredUploads.map((track, index) => {
                 const isActive = currentTrack?.id === track.id
                 return (
@@ -1317,7 +1317,7 @@ export default function AdminPage() {
       )}
 
       {adminSection === 'drafts' && (
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm">
         <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
           <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
             <FolderOpen size={20} className="text-amber-500" /> Recording Drafts

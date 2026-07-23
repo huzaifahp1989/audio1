@@ -15,8 +15,7 @@ export default function TrackList({ tracks, emptyMessage = 'No audio files uploa
         <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
           <Music size={28} className="text-slate-400" />
         </div>
-        <p className="text-slate-500 text-sm">{emptyMessage}</p>
-        <p className="text-slate-400 text-xs mt-1">Upload audio files from the Admin panel.</p>
+        <p className="text-slate-500 text-sm max-w-md">{emptyMessage}</p>
       </div>
     )
   }

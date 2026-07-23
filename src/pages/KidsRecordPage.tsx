@@ -367,7 +367,7 @@ export default function KidsRecordPage() {
             Record another
           </button>
           <button
-            onClick={() => navigate('/kids')}
+            onClick={() => navigate(`/kids?tab=${category}`)}
             className="px-5 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50"
           >
             Back to Kids

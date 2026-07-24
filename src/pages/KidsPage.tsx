@@ -4,10 +4,20 @@ import { Mic, Star, RefreshCw } from 'lucide-react'
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
 import TrackList from '../components/TrackList'
 import { KIDS_CATEGORIES } from '../constants/categories'
-import type { AudioCategory, AudioTrack } from '../types'
+import type { AudioCategory, AudioTrack, NasheedLanguage } from '../types'
 import { isKidsCategory, isRecordedTrack } from '../types'
 
 type KidsTab = 'all' | 'recorded' | AudioCategory
+type LangFilter = NasheedLanguage | 'all'
+
+const ARABIC_CHAR = /[\u0600-\u06FF]/
+
+function getKidsLanguage(t: AudioTrack): NasheedLanguage {
+  const lang = (t.language || t.topic || '').toLowerCase()
+  if (lang === 'arabic' || lang === 'english' || lang === 'urdu') return lang
+  if (ARABIC_CHAR.test(t.title || '') || ARABIC_CHAR.test(t.reciter || '')) return 'arabic'
+  return 'english'
+}
 
 /** Detect kids content even if it was uploaded under quran/nasheeds by mistake. */
 function looksLikeKidsTrack(track: AudioTrack): boolean {
@@ -66,6 +76,9 @@ export default function KidsPage() {
   const { tracks, loading, refresh } = useAudioLibrary()
   const [searchParams, setSearchParams] = useSearchParams()
   const tabParam = searchParams.get('tab')
+  const langParam = searchParams.get('lang') as LangFilter | null
+
+  useEffect(() => { refresh() }, [])
 
   const initialTab = ((): KidsTab => {
     if (tabParam === 'all' || tabParam === 'recorded') return tabParam
@@ -74,6 +87,9 @@ export default function KidsPage() {
   })()
 
   const [activeTab, setActiveTab] = useState<KidsTab>(initialTab)
+  const [langFilter, setLangFilter] = useState<LangFilter>(
+    langParam === 'arabic' || langParam === 'english' || langParam === 'urdu' ? langParam : 'all'
+  )
 
   useEffect(() => {
     if (tabParam === 'all' || tabParam === 'recorded' || (tabParam && isKidsCategory(tabParam))) {
@@ -81,16 +97,20 @@ export default function KidsPage() {
     }
   }, [tabParam])
 
+  useEffect(() => {
+    if (langParam === 'arabic' || langParam === 'english' || langParam === 'urdu' || langParam === 'all') {
+      setLangFilter(langParam)
+    }
+  }, [langParam])
+
   const kidsTracks = useMemo(() => {
     return tracks.filter(looksLikeKidsTrack).map(normalizeKidsTrack)
   }, [tracks])
 
-  /** Recorded via Kids Studio or Record page — include misfiled WAV/WebM uploads. */
   const recordedTracks = useMemo(() => {
     return tracks
       .filter((t) => {
         if (!isRecordedTrack(t)) return false
-        // Kids-tagged, kids-studio source, or any recorded file that looks like kids content
         return (
           isKidsCategory(t.category) ||
           t.source === 'kids-studio' ||
@@ -101,15 +121,61 @@ export default function KidsPage() {
       .map(normalizeKidsTrack)
   }, [tracks])
 
+  const kidsNasheedTracks = useMemo(
+    () => kidsTracks.filter((t) => t.category === 'kids-nasheeds'),
+    [kidsTracks]
+  )
+
+  const langCounts = useMemo(() => {
+    const c = { all: kidsNasheedTracks.length, arabic: 0, english: 0, urdu: 0 }
+    for (const t of kidsNasheedTracks) c[getKidsLanguage(t)]++
+    return c
+  }, [kidsNasheedTracks])
+
   const filteredTracks = useMemo(() => {
-    if (activeTab === 'all') return kidsTracks
-    if (activeTab === 'recorded') return recordedTracks
-    return kidsTracks.filter((t) => t.category === activeTab)
-  }, [kidsTracks, recordedTracks, activeTab])
+    let list =
+      activeTab === 'all'
+        ? kidsTracks
+        : activeTab === 'recorded'
+          ? recordedTracks
+          : kidsTracks.filter((t) => t.category === activeTab)
+
+    if (langFilter !== 'all') {
+      if (activeTab === 'kids-nasheeds' || activeTab === 'all') {
+        list = list.filter((t) => {
+          if (activeTab === 'all' && t.category !== 'kids-nasheeds') return true
+          return getKidsLanguage(t) === langFilter
+        })
+      }
+    }
+
+    return [...list].sort((a, b) => {
+      const aAr = getKidsLanguage(a) === 'arabic' ? 0 : 1
+      const bAr = getKidsLanguage(b) === 'arabic' ? 0 : 1
+      if (aAr !== bAr) return aAr - bAr
+      return (b.uploadedAt || 0) - (a.uploadedAt || 0)
+    })
+  }, [kidsTracks, recordedTracks, activeTab, langFilter])
 
   const selectTab = (tab: KidsTab) => {
     setActiveTab(tab)
-    setSearchParams(tab === 'all' ? {} : { tab })
+    const params: Record<string, string> = {}
+    if (tab !== 'all') params.tab = tab
+    if (langFilter !== 'all' && (tab === 'all' || tab === 'kids-nasheeds')) params.lang = langFilter
+    setSearchParams(params)
+  }
+
+  const selectLang = (lang: LangFilter) => {
+    setLangFilter(lang)
+    const params: Record<string, string> = {}
+    if (lang !== 'all') {
+      setActiveTab('kids-nasheeds')
+      params.tab = 'kids-nasheeds'
+      params.lang = lang
+    } else if (activeTab !== 'all') {
+      params.tab = activeTab
+    }
+    setSearchParams(params)
   }
 
   const activeMeta =
@@ -119,9 +185,10 @@ export default function KidsPage() {
         ? { label: 'Your Recordings', emoji: '🎙️', color: 'from-violet-500 to-fuchsia-500' }
         : KIDS_CATEGORIES.find((c) => c.id === activeTab)!
 
+  const showLangFilters = activeTab === 'all' || activeTab === 'kids-nasheeds'
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
         <div className="flex items-center gap-4 flex-1">
           <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center shadow-sm">
@@ -132,7 +199,7 @@ export default function KidsPage() {
             <p className="text-slate-500 text-sm mt-0.5">
               {loading
                 ? 'Loading kids recordings…'
-                : `${kidsTracks.length} in library · ${recordedTracks.length} recorded`}
+                : `${kidsTracks.length} in library · ${langCounts.arabic} Arabic nasheeds · ${recordedTracks.length} recorded`}
             </p>
           </div>
         </div>
@@ -162,8 +229,7 @@ export default function KidsPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-3 mb-8 flex-wrap">
+      <div className="flex gap-3 mb-4 flex-wrap">
         <button
           type="button"
           onClick={() => selectTab('all')}
@@ -229,11 +295,51 @@ export default function KidsPage() {
         })}
       </div>
 
-      {/* Active section banner */}
+      {showLangFilters && (
+        <div className="mb-6">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Nasheed language</p>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                { id: 'all' as const, label: 'All languages', activeClass: 'bg-slate-800 text-white shadow-md' },
+                { id: 'arabic' as const, label: 'العربية · Arabic', activeClass: 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md' },
+                { id: 'english' as const, label: 'English', activeClass: 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-md' },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => selectLang(tab.id)}
+                className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                  langFilter === tab.id
+                    ? tab.activeClass
+                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {tab.label}
+                <span
+                  className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
+                    langFilter === tab.id ? 'bg-white/20' : 'bg-slate-100 text-slate-500'
+                  }`}
+                >
+                  {langCounts[tab.id]}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className={`rounded-xl p-5 mb-6 bg-gradient-to-r ${activeMeta.color} shadow-md flex items-center gap-3`}>
         <span className="text-3xl">{activeMeta.emoji}</span>
         <div className="flex-1 min-w-0">
-          <h2 className="font-bold text-white text-lg">{activeMeta.label}</h2>
+          <h2 className="font-bold text-white text-lg">
+            {activeTab === 'kids-nasheeds' && langFilter === 'arabic'
+              ? 'Kids Arabic Nasheeds'
+              : activeTab === 'kids-nasheeds' && langFilter === 'english'
+                ? 'Kids English Nasheeds'
+                : activeMeta.label}
+          </h2>
           <p className="text-white/80 text-sm">
             {loading
               ? 'Loading…'
@@ -275,9 +381,11 @@ export default function KidsPage() {
           emptyMessage={
             activeTab === 'recorded'
               ? 'No recordings uploaded yet — record in Kids Studio or Record, pick a Kids category, then Upload.'
-              : kidsTracks.length === 0
-                ? 'No kids recordings yet — open Kids Studio to make the first one!'
-                : `No ${activeMeta.label} yet — try All, or open Kids Studio to record one.`
+              : langFilter === 'arabic' && filteredTracks.length === 0
+                ? 'No Arabic kids nasheeds found — try All languages.'
+                : kidsTracks.length === 0
+                  ? 'No kids recordings yet — open Kids Studio to make the first one!'
+                  : `No ${activeMeta.label} yet — try All, or open Kids Studio to record one.`
           }
         />
       )}

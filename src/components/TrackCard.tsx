@@ -96,6 +96,11 @@ export default function TrackCard({ track, tracks, index }: TrackCardProps) {
                 if (lang === 'urdu') return <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100">Urdu</span>
                 return null
               })()}
+              {(track.category === 'kids-nasheeds' || track.category === 'kids-quran' || track.category === 'kids-stories') && (
+                <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-pink-50 text-pink-700 border border-pink-100">
+                  Kids
+                </span>
+              )}
               <span
                 className="inline-flex items-center gap-1 text-xs text-slate-500 tabular-nums"
                 title={`${views} view${views === 1 ? '' : 's'}`}

@@ -33,7 +33,7 @@ type LangFilter = NasheedLanguage | 'all'
 export default function NasheedsPage() {
   const { tracks, refresh } = useAudioLibrary()
   useEffect(() => { refresh() }, [])
-  const allTracks = tracks.filter((t) => t.category === 'nasheeds')
+  const allTracks = tracks.filter((t) => t.category === 'nasheeds' || t.category === 'kids-nasheeds')
   const [search, setSearch] = useState('')
   const [selectedArtist, setSelectedArtist] = useState<string>('all')
   const [langFilter, setLangFilter] = useState<LangFilter>('all')

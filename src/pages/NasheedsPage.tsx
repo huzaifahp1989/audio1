@@ -28,21 +28,6 @@ export function getNasheedLanguage(t: AudioTrack): NasheedLanguage {
   return 'english'
 }
 
-/** Vocals-only / without music: explicit flag or title/topic hints. */
-export function isVocalsOnlyNasheed(t: AudioTrack): boolean {
-  if (t.vocalsOnly === true) return true
-  const hay = `${t.title || ''} ${t.topic || ''} ${t.fileName || ''}`.toLowerCase()
-  return (
-    hay.includes('vocals only') ||
-    hay.includes('vocal only') ||
-    hay.includes('a cappella') ||
-    hay.includes('acapella') ||
-    hay.includes('without music') ||
-    hay.includes('no music') ||
-    hay.includes('no instrument')
-  )
-}
-
 type LangFilter = NasheedLanguage | 'all'
 
 export default function NasheedsPage() {
@@ -52,15 +37,11 @@ export default function NasheedsPage() {
   const [search, setSearch] = useState('')
   const [selectedArtist, setSelectedArtist] = useState<string>('all')
   const [langFilter, setLangFilter] = useState<LangFilter>('all')
-  const [vocalsOnly, setVocalsOnly] = useState(false)
   const [showArtistDropdown, setShowArtistDropdown] = useState(false)
 
   const counts = useMemo(() => {
-    const c = { all: allTracks.length, arabic: 0, english: 0, urdu: 0, vocalsOnly: 0 }
-    for (const t of allTracks) {
-      c[getNasheedLanguage(t)]++
-      if (isVocalsOnlyNasheed(t)) c.vocalsOnly++
-    }
+    const c = { all: allTracks.length, arabic: 0, english: 0, urdu: 0 }
+    for (const t of allTracks) c[getNasheedLanguage(t)]++
     return c
   }, [allTracks])
 
@@ -82,9 +63,8 @@ export default function NasheedsPage() {
 
     const lang = getNasheedLanguage(t)
     const matchesLang = langFilter === 'all' ? true : lang === langFilter
-    const matchesVocals = vocalsOnly ? isVocalsOnlyNasheed(t) : true
 
-    return matchesSearch && matchesArtist && matchesLang && matchesVocals
+    return matchesSearch && matchesArtist && matchesLang
   })
 
   const activeTab = LANGUAGE_TABS.find((t) => t.id === langFilter)!
@@ -106,8 +86,6 @@ export default function NasheedsPage() {
               <span className="text-sky-600">{counts.english} English</span>
               <span className="text-slate-400"> · </span>
               <span className="text-amber-600">{counts.urdu} Urdu</span>
-              <span className="text-slate-400"> · </span>
-              <span className="text-rose-600">{counts.vocalsOnly} without music</span>
             </p>
           </div>
         </div>
@@ -126,7 +104,7 @@ export default function NasheedsPage() {
       {/* Language categories */}
       <div className="mb-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Language</p>
-        <div className="flex flex-wrap gap-2 mb-3">
+        <div className="flex flex-wrap gap-2 mb-5">
           {LANGUAGE_TABS.map((tab) => (
             <button
               key={tab.id}
@@ -153,27 +131,6 @@ export default function NasheedsPage() {
               </span>
             </button>
           ))}
-        </div>
-        <div className="mb-5">
-          <button
-            type="button"
-            onClick={() => setVocalsOnly((v) => !v)}
-            className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-              vocalsOnly
-                ? 'bg-gradient-to-r from-rose-600 to-pink-600 text-white shadow-md'
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            Without music
-            <span
-              className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
-                vocalsOnly ? 'bg-white/20' : 'bg-slate-100 text-slate-500'
-              }`}
-            >
-              {counts.vocalsOnly}
-            </span>
-          </button>
-          <p className="text-xs text-slate-400 mt-1.5">Vocals-only / a cappella nasheeds (no instruments)</p>
         </div>
       </div>
 
@@ -268,9 +225,7 @@ export default function NasheedsPage() {
       <TrackList
         tracks={filtered}
         emptyMessage={
-          vocalsOnly
-            ? 'No vocals-only (without music) nasheeds found for this filter.'
-            : langFilter !== 'all'
+          langFilter !== 'all'
             ? `No ${activeTab.label} nasheeds found.`
             : selectedArtist !== 'all'
               ? 'No nasheeds found for the selected artist.'

@@ -96,11 +96,6 @@ export default function TrackCard({ track, tracks, index }: TrackCardProps) {
                 if (lang === 'urdu') return <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100">Urdu</span>
                 return null
               })()}
-              {track.vocalsOnly && (
-                <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-100">
-                  No music
-                </span>
-              )}
               <span
                 className="inline-flex items-center gap-1 text-xs text-slate-500 tabular-nums"
                 title={`${views} view${views === 1 ? '' : 's'}`}

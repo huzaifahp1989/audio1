@@ -19,6 +19,7 @@ export async function uploadAudioToCloud(
     text?: string
     language?: string
     source?: string
+    vocalsOnly?: boolean
   }
 ): Promise<{ url: string; track: AudioTrack }> {
   const filename = `audio/${id}-${file.name}`
@@ -59,6 +60,9 @@ export async function uploadAudioToCloud(
   }
   if (metadata.language !== undefined && metadata.language !== '') {
     track.language = metadata.language
+  }
+  if (metadata.vocalsOnly) {
+    track.vocalsOnly = true
   }
   
   // Save metadata to Firestore using the same ID as the track

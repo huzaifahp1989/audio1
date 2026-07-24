@@ -29,6 +29,8 @@ export interface AudioTrack {
   views?: number     // Play/view count
   /** Where the track was created: kids-studio, record, admin, upload */
   source?: string
+  /** True for a cappella / vocals-only nasheeds (no instruments). */
+  vocalsOnly?: boolean
 }
 
 export function isKidsCategory(category: AudioCategory | string): boolean {

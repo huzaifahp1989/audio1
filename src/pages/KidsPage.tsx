@@ -24,9 +24,16 @@ function looksLikeKidsTrack(track: AudioTrack): boolean {
     hay.includes('learn the quran for children') ||
     hay.includes('juz amma compilation (kids)') ||
     hay.includes('islamic poem for kids') ||
+    hay.includes('islamic songs for kids') ||
+    hay.includes("let's pray") ||
+    hay.includes('lets pray') ||
     title === 'allah made everything' ||
     title === 'hasbi rabbi jallallah' ||
-    title === 'halal story'
+    title === 'halal story' ||
+    title === 'a is for allah' ||
+    title === 'mum and dad' ||
+    title === 'my brother' ||
+    title.startsWith('aisha')
   )
 }
 

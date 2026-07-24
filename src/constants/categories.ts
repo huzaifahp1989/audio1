@@ -27,6 +27,8 @@ export const NASHEED_ARTISTS = [
   'Mishary Rashid Alafasy',
   'Muad',
   'Zain Bhikha',
+  'Omar Esa',
+  'Ilyas Mao',
   'Junaid Jamshed',
   'Owais Raza Qadri',
   'Hafiz Abubakr',

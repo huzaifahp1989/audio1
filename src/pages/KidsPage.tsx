@@ -33,7 +33,9 @@ function looksLikeKidsTrack(track: AudioTrack): boolean {
     title === 'a is for allah' ||
     title === 'mum and dad' ||
     title === 'my brother' ||
-    title.startsWith('aisha')
+    title.startsWith('aisha') ||
+    hay.includes('kids, vocals only') ||
+    (hay.includes('vocals only') && hay.includes('kids'))
   )
 }
 

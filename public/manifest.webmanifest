@@ -1,0 +1,15 @@
+{
+  "name": "Islamic Audio Library",
+  "short_name": "Islamic Audio",
+  "description": "Quran, nasheeds, talks and more — optimized for car and Android Auto Bluetooth controls",
+  "start_url": "/car",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#7c3aed",
+  "orientation": "any",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ],
+  "categories": ["music", "education"]
+}

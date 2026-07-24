@@ -13,6 +13,7 @@ import RecordPage from './pages/RecordPage'
 import AudiobookPage from './pages/AudiobookPage'
 import HadithPage from './pages/HadithPage'
 import DuaPage from './pages/DuaPage'
+import CarModePage from './pages/CarModePage'
 
 export default function App() {
   return (
@@ -22,6 +23,8 @@ export default function App() {
           <Routes>
             <Route element={<Layout />}>
               <Route path="/" element={<HomePage />} />
+              <Route path="/car" element={<CarModePage />} />
+              <Route path="/drive" element={<Navigate to="/car" replace />} />
               <Route path="/quran" element={<QuranPage />} />
               <Route path="/nasheeds" element={<NasheedsPage />} />
               <Route path="/talks" element={<TalksPage />} />

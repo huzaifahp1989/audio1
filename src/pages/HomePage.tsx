@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { BookOpen, Music2, Mic2, Star, ArrowRight, BookText, Scroll, Hand } from 'lucide-react'
+import { BookOpen, Music2, Mic2, Star, ArrowRight, BookText, Scroll, Hand, Car } from 'lucide-react'
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
 import TrackCard from '../components/TrackCard'
 
@@ -100,12 +100,20 @@ export default function HomePage() {
           <p className="text-violet-100 text-lg max-w-xl mx-auto mb-8">
             Explore Quran recitations, nasheeds, Islamic talks and children's audio — all in one place.
           </p>
-          <Link
-            to="/quran"
-            className="inline-flex items-center gap-2 bg-white text-violet-700 hover:bg-violet-50 transition-colors font-semibold px-6 py-3 rounded-xl shadow-md"
-          >
-            Start Listening <ArrowRight size={18} />
-          </Link>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link
+              to="/quran"
+              className="inline-flex items-center gap-2 bg-white text-violet-700 hover:bg-violet-50 transition-colors font-semibold px-6 py-3 rounded-xl shadow-md"
+            >
+              Start Listening <ArrowRight size={18} />
+            </Link>
+            <Link
+              to="/car"
+              className="inline-flex items-center gap-2 bg-white/15 border border-white/40 text-white hover:bg-white/25 transition-colors font-semibold px-6 py-3 rounded-xl"
+            >
+              <Car size={18} /> Car Mode
+            </Link>
+          </div>
         </div>
       </div>
 

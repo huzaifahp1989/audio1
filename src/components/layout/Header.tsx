@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { BookOpen, Music2, Mic2, Star, Shield, Home, Menu, X, Mic, BookText, Scroll, Hand } from 'lucide-react'
+import { BookOpen, Music2, Mic2, Star, Shield, Home, Menu, X, Mic, BookText, Scroll, Hand, Car } from 'lucide-react'
 
 const NAV_LINKS = [
   { to: '/', label: 'Home', icon: Home },
+  { to: '/car', label: 'Car', icon: Car },
   { to: '/quran', label: 'Quran', icon: BookOpen },
   { to: '/nasheeds', label: 'Nasheeds', icon: Music2 },
   { to: '/talks', label: 'Talks', icon: Mic2 },

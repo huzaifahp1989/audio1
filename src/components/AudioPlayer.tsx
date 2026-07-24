@@ -4,7 +4,11 @@ import { useAudioPlayer } from '../context/AudioPlayerContext'
 import { formatDuration, formatViews } from '../lib/storage'
 
 export default function AudioPlayer() {
-  const { currentTrack, isPlaying, currentTime, duration, volume, togglePlay, seek, setVolume, stopTrack, playNext, playPrev, hasNext, hasPrev } = useAudioPlayer()
+  const {
+    currentTrack, isPlaying, currentTime, duration, volume,
+    togglePlay, seek, setVolume, stopTrack, playNext, playPrev, hasNext, hasPrev,
+    isAdPlaying, skipAd,
+  } = useAudioPlayer()
   const [minimized, setMinimized] = useState(false)
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
@@ -138,7 +142,20 @@ export default function AudioPlayer() {
       style={style}
     >
       {/* Gradient top accent */}
-      <div className="h-1 bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500" />
+      <div className={`h-1 bg-gradient-to-r ${isAdPlaying ? 'from-rose-500 via-pink-500 to-orange-400' : 'from-violet-500 via-purple-500 to-indigo-500'}`} />
+
+      {isAdPlaying && (
+        <div className="flex items-center justify-between gap-2 px-4 py-2 bg-rose-50 border-b border-rose-100">
+          <span className="text-xs font-semibold text-rose-700">Sponsored message</span>
+          <button
+            type="button"
+            onClick={skipAd}
+            className="text-[11px] font-bold uppercase tracking-wide text-rose-700 px-2 py-1 rounded-md bg-rose-100 hover:bg-rose-200"
+          >
+            Skip ad
+          </button>
+        </div>
+      )}
 
       {/* Drag handle bar */}
       <div
@@ -148,7 +165,7 @@ export default function AudioPlayer() {
       >
         <div className="flex items-center gap-1.5 text-slate-400">
           <GripHorizontal size={14} />
-          <span className="text-xs font-medium text-slate-500">Now Playing</span>
+          <span className="text-xs font-medium text-slate-500">{isAdPlaying ? 'Advertisement' : 'Now Playing'}</span>
         </div>
         <div className="flex items-center gap-1">
           <button onClick={() => setMinimized(true)} className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors" title="Minimize">

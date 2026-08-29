@@ -1,21 +1,39 @@
-import React, { useState, useEffect } from 'react'
-import { Hand, Search, ChevronDown, FileText, X, Play, Pause } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { Hand, Search, ChevronDown, FileText, X, Play, Pause, Eye } from 'lucide-react'
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
+import CategoryUploadPanel from '../components/CategoryUploadPanel'
 import { DUA_CATEGORIES } from '../constants/categories'
 import type { AudioTrack } from '../types'
 import { useAudioPlayer } from '../context/AudioPlayerContext'
 import { formatDuration } from '../lib/storage'
+import { formatViews } from '../lib/views'
 
 export default function DuaPage() {
-  const { tracks, refresh } = useAudioLibrary()
+  const { tracks, loading } = useAudioLibrary()
   const { currentTrack, isPlaying, playFromList, togglePlay } = useAudioPlayer()
-  useEffect(() => { refresh() }, [])
   
   const allTracks = tracks.filter((t) => t.category === 'dua')
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
   const [selectedTrack, setSelectedTrack] = useState<AudioTrack | null>(null)
+
+  useEffect(() => {
+    if (!selectedTrack) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSelectedTrack(null)
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = previousOverflow
+    }
+  }, [selectedTrack])
 
   const filtered = allTracks.filter((t) => {
     const matchesSearch = search
@@ -33,6 +51,9 @@ export default function DuaPage() {
 
   const selectedCategoryLabel = DUA_CATEGORIES.find(c => c.id === selectedCategory)
 
+  // Calculate total views
+  const totalViews = allTracks.reduce((sum, t) => sum + (t.views || 0), 0)
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
       <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
@@ -42,7 +63,13 @@ export default function DuaPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-800">Dua & Adhkar</h1>
-            <p className="text-slate-500 text-sm mt-0.5">{allTracks.length} dua{allTracks.length !== 1 ? 's' : ''}</p>
+            <p className="text-slate-500 text-sm mt-0.5">
+              {allTracks.length} dua{allTracks.length !== 1 ? 's' : ''} · {' '}
+              <span className="inline-flex items-center gap-1">
+                <Eye size={12} />
+                {formatViews(totalViews)}
+              </span>
+            </p>
           </div>
         </div>
         <div className="relative">
@@ -56,6 +83,8 @@ export default function DuaPage() {
           />
         </div>
       </div>
+
+      <CategoryUploadPanel category="dua" className="mb-8" />
 
       {/* Filters Row */}
       <div className="flex flex-wrap items-center gap-4 mb-8">
@@ -129,15 +158,24 @@ export default function DuaPage() {
 
       {/* Text Content Modal */}
       {selectedTrack && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[80vh] flex flex-col">
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedTrack(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dua-modal-title"
+            className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[80vh] flex flex-col"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-teal-100 flex items-center justify-center">
                   <FileText size={20} className="text-teal-600" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-800">{selectedTrack.title}</h3>
+                  <h3 id="dua-modal-title" className="font-bold text-slate-800">{selectedTrack.title}</h3>
                   <p className="text-sm text-slate-500">
                     {DUA_CATEGORIES.find(c => c.id === selectedTrack.topic)?.label || selectedTrack.topic}
                   </p>
@@ -228,6 +266,10 @@ export default function DuaPage() {
                         {formatDuration(track.duration)}
                       </span>
                     )}
+                    <span className="text-xs text-slate-400 flex items-center gap-0.5">
+                      <Eye size={10} />
+                      {formatViews(track.views)}
+                    </span>
                   </div>
                   
                   {/* Title */}
@@ -283,6 +325,12 @@ export default function DuaPage() {
               </div>
             )
           })}
+        </div>
+      ) : loading && allTracks.length === 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="h-56 rounded-3xl skeleton" />
+          ))}
         </div>
       ) : (
         <div className="text-center py-16 border border-dashed border-slate-300 rounded-xl bg-slate-50">

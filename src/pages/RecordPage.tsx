@@ -1,15 +1,189 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Mic, Square, Play, Pause, Upload, RotateCcw, Scissors, SkipBack, SkipForward, Volume2, Headphones, Crop, Split, Eraser, ZoomIn, ZoomOut, Sparkles, CheckCircle, Save, FolderOpen, Trash2, Clock, ChevronRight, X } from 'lucide-react'
+import { Mic, Square, Play, Pause, Upload, RotateCcw, Scissors, SkipBack, SkipForward, Volume2, Headphones, Crop, Split, Eraser, ZoomIn, ZoomOut, Sparkles, CheckCircle, Save, FolderOpen, Trash2, Clock, ChevronRight, X, FileText, Wand2, RefreshCw } from 'lucide-react'
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
 import { useNavigate } from 'react-router-dom'
-import { saveDraft, getAllDrafts, deleteDraft, type RecordingDraft } from '../lib/indexedDb'
-import { ALL_CATEGORIES_LIST, QURAN_RECITERS, NASHEED_ARTISTS, TALKS_SPEAKERS, TALKS_TOPICS } from '../constants/categories'
+import {
+  saveDraft,
+  getAllDrafts,
+  deleteDraft,
+  savePendingRecorderUpload,
+  getAllPendingRecorderUploads,
+  deletePendingRecorderUpload,
+  type RecordingDraft,
+  type PendingRecorderUpload,
+} from '../lib/indexedDb'
+import { ALL_CATEGORIES_LIST, QURAN_RECITERS, NASHEED_ARTISTS, TALKS_SPEAKERS, TALKS_TOPICS, AUDIOBOOK_AUTHORS, HADITH_NARRATORS, UNCATEGORIZED_CATEGORY, formatCategoryLabel } from '../constants/categories'
 import type { AudioCategory } from '../types'
+import { submitUserRecordingForReview } from '../lib/storage'
+import { trimSilenceFromFile } from '../lib/audioProcessing'
 import WaveSurfer from 'wavesurfer.js'
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions'
+import { transcribeAudio, canTranscribe } from '../lib/transcription'
+import TranscriptionModal from '../components/TranscriptionModal'
+import { useAuth } from '../context/AuthContext'
+import { getMaxUploadBytes } from '../lib/uploadLimits'
+import { trackEvent } from '../lib/analytics'
 
-const RECORDER_USERNAME = 'recorder'
-const RECORDER_PASSWORD = 'record123'
+const RECORDER_MIME_TYPES = [
+  'audio/webm;codecs=opus',
+  'audio/webm',
+  'audio/ogg;codecs=opus',
+  'audio/mp4',
+]
+const MICROPHONE_REQUEST_TIMEOUT_MS = 10000
+type RecordingQuality = 'standard' | 'high'
+const RECORDER_QUALITY_STORAGE_KEY = 'recorder_quality_preset'
+const RECORDING_QUALITY_PRESETS: Record<RecordingQuality, { label: string; audioBitsPerSecond: number; description: string }> = {
+  standard: { label: 'Standard', audioBitsPerSecond: 128000, description: 'Smaller files' },
+  high: { label: 'High', audioBitsPerSecond: 256000, description: 'Best clarity' },
+}
+
+function createMediaRecorderWithFallback(
+  stream: MediaStream,
+  audioBitsPerSecond: number,
+): { recorder: MediaRecorder; mimeType: string } {
+  const supportedMimeType = RECORDER_MIME_TYPES.find((mime) => {
+    if (typeof MediaRecorder.isTypeSupported !== 'function') return false
+    return MediaRecorder.isTypeSupported(mime)
+  })
+
+  const attempts: MediaRecorderOptions[] = []
+  if (supportedMimeType) {
+    attempts.push({ mimeType: supportedMimeType, audioBitsPerSecond })
+    attempts.push({ mimeType: supportedMimeType })
+  }
+  attempts.push({ audioBitsPerSecond })
+  attempts.push({})
+
+  for (const options of attempts) {
+    try {
+      const recorder = new MediaRecorder(stream, options)
+      return {
+        recorder,
+        mimeType: recorder.mimeType || supportedMimeType || 'audio/webm',
+      }
+    } catch {
+      // Try next option.
+    }
+  }
+
+  throw new Error('MediaRecorder initialization failed')
+}
+
+async function requestMicrophoneStream(
+  audioConstraints: MediaTrackConstraints | boolean,
+  timeoutMs = MICROPHONE_REQUEST_TIMEOUT_MS,
+): Promise<MediaStream> {
+  return new Promise((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      const timeoutError = new Error('Microphone request timed out')
+      timeoutError.name = 'TimeoutError'
+      reject(timeoutError)
+    }, timeoutMs)
+
+    navigator.mediaDevices.getUserMedia({ audio: audioConstraints })
+      .then((stream) => {
+        window.clearTimeout(timeoutId)
+        resolve(stream)
+      })
+      .catch((error) => {
+        window.clearTimeout(timeoutId)
+        reject(error)
+      })
+  })
+}
+
+function mapUploadError(error: unknown): string {
+  const err = error as { code?: string; message?: string }
+  const code = err?.code || ''
+  if (code === 'storage/unauthorized') return 'Upload permission denied. Please check Firebase storage rules.'
+  if (code === 'storage/retry-limit-exceeded') return 'Upload timed out. Check your connection and try again.'
+  if (code === 'storage/canceled') return 'Upload was canceled.'
+  if (code === 'storage/quota-exceeded') return 'Storage quota exceeded. Please contact admin.'
+  if (err?.message) return err.message
+  return 'Upload failed. Please try again.'
+}
+
+async function extractDurationFromFile(file: File): Promise<number | undefined> {
+  return new Promise((resolve) => {
+    const audio = new Audio()
+    const url = URL.createObjectURL(file)
+    audio.src = url
+    audio.addEventListener('loadedmetadata', () => { resolve(audio.duration); URL.revokeObjectURL(url) })
+    audio.addEventListener('error', () => { resolve(undefined); URL.revokeObjectURL(url) })
+    setTimeout(() => { resolve(undefined); URL.revokeObjectURL(url) }, 8000)
+  })
+}
+
+interface AudioQualityStats {
+  peak: number
+  rms: number
+  clippedRatio: number
+}
+
+function analyzeAudioQuality(buffer: AudioBuffer): AudioQualityStats {
+  const channelData = buffer.getChannelData(0)
+  const step = Math.max(1, Math.floor(channelData.length / 120000))
+
+  let peak = 0
+  let sumSquares = 0
+  let clipped = 0
+  let count = 0
+
+  for (let i = 0; i < channelData.length; i += step) {
+    const sample = Math.abs(channelData[i])
+    if (sample > peak) peak = sample
+    sumSquares += sample * sample
+    if (sample >= 0.995) clipped += 1
+    count += 1
+  }
+
+  return {
+    peak,
+    rms: count ? Math.sqrt(sumSquares / count) : 0,
+    clippedRatio: count ? clipped / count : 0,
+  }
+}
+
+async function enhanceSpeechBuffer(buffer: AudioBuffer): Promise<AudioBuffer> {
+  const stats = analyzeAudioQuality(buffer)
+  const targetPeak = 0.89
+  const gainValue = stats.peak > 0 ? Math.min(2.2, targetPeak / stats.peak) : 1
+
+  const offCtx = new OfflineAudioContext(
+    buffer.numberOfChannels,
+    buffer.length,
+    buffer.sampleRate,
+  )
+  const src = offCtx.createBufferSource()
+  src.buffer = buffer
+
+  const highPass = offCtx.createBiquadFilter()
+  highPass.type = 'highpass'
+  highPass.frequency.value = 80
+  highPass.Q.value = 0.7
+
+  const gain = offCtx.createGain()
+  gain.gain.value = gainValue
+
+  src.connect(highPass)
+  highPass.connect(gain)
+  gain.connect(offCtx.destination)
+  src.start(0)
+
+  return offCtx.startRendering()
+}
+
+function isOfflineUploadError(error: unknown): boolean {
+  const message = ((error as { message?: string })?.message || '').toLowerCase()
+  return (
+    !navigator.onLine ||
+    message.includes('network') ||
+    message.includes('failed to fetch') ||
+    message.includes('timed out') ||
+    message.includes('timeout')
+  )
+}
 
 type AudioEffectType = 'none' | 'echo' | 'reverb' | 'distortion' | 'pitchUp' | 'pitchDown' | 'telephone'
 
@@ -25,7 +199,29 @@ const EFFECTS: { id: AudioEffectType; label: string; emoji: string }[] = [
 
 const CATEGORY_ROUTES: Record<string, string> = {
   quran: '/quran', nasheeds: '/nasheeds', talks: '/talks',
-  'kids-stories': '/kids', 'kids-quran': '/kids', 'kids-nasheeds': '/kids',
+  'kids-stories': '/kids-recordings', 'kids-quran': '/kids-recordings', 'kids-nasheeds': '/kids-recordings', 'kids-talks': '/kids-recordings',
+  audiobooks: '/audiobooks', hadith: '/hadith', dua: '/dua',
+}
+
+function extractTitleFromFilename(filename: string): string {
+  // Remove file extension
+  const withoutExtension = filename.replace(/\.[^/.]+$/, '')
+  
+  // Replace underscores, dashes, and dots with spaces
+  const withSpaces = withoutExtension.replace(/[_\-\.]+/g, ' ')
+  
+  // Remove common prefixes like numbers (01., 1., etc.)
+  const withoutPrefixes = withSpaces.replace(/^\d+[\.\s\-_]*/i, '')
+  
+  // Clean up multiple spaces
+  const cleaned = withoutPrefixes.replace(/\s+/g, ' ').trim()
+  
+  // Capitalize first letter of each word
+  return cleaned.replace(/\b\w/g, char => char.toUpperCase())
+}
+
+function supportsTextContent(cat: AudioCategory): boolean {
+  return cat === 'audiobooks' || cat === 'hadith' || cat === 'dua'
 }
 
 interface AudioEdit { buffer: AudioBuffer; duration: number }
@@ -40,14 +236,12 @@ function formatDate(ts: number) {
 
 export default function RecordPage() {
   const navigate = useNavigate()
-  const [authenticated, setAuthenticated] = useState(false)
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [authError, setAuthError] = useState('')
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<'record' | 'drafts'>('record')
 
   // Recording
   const [isRecording, setIsRecording] = useState(false)
+  const [isStartingRecording, setIsStartingRecording] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [recordTime, setRecordTime] = useState(0)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
@@ -78,14 +272,32 @@ export default function RecordPage() {
 
   // Upload
   const [title, setTitle] = useState('')
-  const [category, setCategory] = useState<AudioCategory>('talks')
+  const [category, setCategory] = useState<AudioCategory>(UNCATEGORIZED_CATEGORY)
   const [reciter, setReciter] = useState('')
   const [customReciter, setCustomReciter] = useState('')
   const [topic, setTopic] = useState('')
   const [showUploadForm, setShowUploadForm] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [trimLeadingSilenceOnUpload, setTrimLeadingSilenceOnUpload] = useState(false)
+  const [trimTrailingSilenceOnUpload, setTrimTrailingSilenceOnUpload] = useState(false)
   const [uploadedCategory, setUploadedCategory] = useState<AudioCategory | null>(null)
+  const [uploadStatus, setUploadStatus] = useState<'pending' | 'published' | null>(null)
   const [uploadError, setUploadError] = useState('')
+  const [contributorName, setContributorName] = useState('')
+  const [contributorEmail, setContributorEmail] = useState('')
+  const [contributorMobile, setContributorMobile] = useState('')
+  const [autoEnhanceAudio, setAutoEnhanceAudio] = useState(true)
+  const [qualityHints, setQualityHints] = useState<string[]>([])
+  const [pendingUploadCount, setPendingUploadCount] = useState(0)
+  const [syncingPendingUploads, setSyncingPendingUploads] = useState(false)
+  const [syncStatusMessage, setSyncStatusMessage] = useState('')
+
+  // Transcription
+  const [textContent, setTextContent] = useState('')
+  const [isTranscribing, setIsTranscribing] = useState(false)
+  const [transcriptionModalOpen, setTranscriptionModalOpen] = useState(false)
+  const [transcribedText, setTranscribedText] = useState('')
+  const [transcriptionError, setTranscriptionError] = useState<string | null>(null)
 
   // Teleprompter
   const [showTeleprompter, setShowTeleprompter] = useState(false)
@@ -103,28 +315,169 @@ export default function RecordPage() {
   const animationRef = useRef<number | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const wavesurferRef = useRef<WaveSurfer | null>(null)
+  const lastAudioUiUpdateRef = useRef(0)
   const regionsPluginRef = useRef<any>(null)
   const waveformContainerRef = useRef<HTMLDivElement>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
-  const { uploadTrack, uploadError: hookError } = useAudioLibrary()
+  const { refresh } = useAudioLibrary()
 
   // Live waveform data
   const [audioLevel, setAudioLevel] = useState(0)
   const [isAudioDetected, setIsAudioDetected] = useState(false)
+  const [availableMics, setAvailableMics] = useState<MediaDeviceInfo[]>([])
+  const [selectedMicId, setSelectedMicId] = useState('')
+  const [isLoadingMics, setIsLoadingMics] = useState(false)
+  const [recordingQuality, setRecordingQuality] = useState<RecordingQuality>(() => {
+    if (typeof window === 'undefined') return 'high'
+    const stored = window.localStorage.getItem(RECORDER_QUALITY_STORAGE_KEY)
+    return stored === 'standard' || stored === 'high' ? stored : 'high'
+  })
+
+  const loadMicrophones = async () => {
+    if (!navigator.mediaDevices?.enumerateDevices) return
+    setIsLoadingMics(true)
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      const mics = devices.filter((device) => device.kind === 'audioinput')
+      setAvailableMics(mics)
+
+      // Keep selected mic valid if hardware changed.
+      setSelectedMicId((current) => {
+        if (!mics.length) return ''
+        if (!current) return mics[0].deviceId
+        return mics.some((mic) => mic.deviceId === current) ? current : mics[0].deviceId
+      })
+    } catch (error) {
+      console.warn('[Recording] Failed to list microphones', error)
+      setAvailableMics([])
+    } finally {
+      setIsLoadingMics(false)
+    }
+  }
 
   const loadDraftList = async () => { setDrafts(await getAllDrafts()) }
-  useEffect(() => { if (authenticated) loadDraftList() }, [authenticated])
-
-  const handleAuth = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (username === RECORDER_USERNAME && password === RECORDER_PASSWORD) { setAuthenticated(true); setAuthError('') }
-    else setAuthError('Invalid username or password')
+  const loadPendingUploadCount = async () => {
+    const pending = await getAllPendingRecorderUploads()
+    setPendingUploadCount(pending.length)
   }
+
+  const syncPendingUploads = async () => {
+    const pending = await getAllPendingRecorderUploads()
+    if (!pending.length) {
+      setPendingUploadCount(0)
+      return
+    }
+
+    setSyncingPendingUploads(true)
+    setSyncStatusMessage('')
+
+    let synced = 0
+    for (const item of pending) {
+      try {
+        const retryFile = new File([item.blob], item.fileName, { type: item.mimeType })
+        await submitUserRecordingForReview(
+          retryFile,
+          {
+            title: item.metadata.title,
+            category: item.metadata.category as AudioCategory,
+            reciter: item.metadata.reciter,
+            contributorName: item.metadata.contributorName,
+            email: item.metadata.email,
+            mobile: item.metadata.mobile,
+            topic: item.metadata.topic,
+            text: item.metadata.text,
+            duration: item.metadata.duration,
+          },
+          { requireFirebaseStorage: true },
+        )
+        await deletePendingRecorderUpload(item.id)
+        synced += 1
+      } catch (error) {
+        console.warn('[Recorder sync] Failed pending upload', item.id, error)
+      }
+    }
+
+    await loadPendingUploadCount()
+    if (synced > 0) {
+      setSyncStatusMessage(`${synced} pending upload${synced > 1 ? 's' : ''} synced.`)
+      refresh()
+    }
+    setSyncingPendingUploads(false)
+  }
+
+  useEffect(() => { loadDraftList() }, [])
+  useEffect(() => { void loadPendingUploadCount() }, [])
+
+  useEffect(() => {
+    if (!user) return
+    if (!contributorName.trim()) {
+      setContributorName(user.email?.split('@')[0] || 'Contributor')
+    }
+    if (!contributorEmail.trim()) {
+      setContributorEmail(user.email || '')
+    }
+  }, [user])
+
+  useEffect(() => {
+    const onOnline = () => {
+      void syncPendingUploads()
+    }
+    window.addEventListener('online', onOnline)
+    return () => window.removeEventListener('online', onOnline)
+  }, [])
+
+  useEffect(() => {
+    window.localStorage.setItem(RECORDER_QUALITY_STORAGE_KEY, recordingQuality)
+  }, [recordingQuality])
+
+  useEffect(() => {
+    void loadMicrophones()
+
+    const mediaDevices = navigator.mediaDevices
+    if (!mediaDevices?.addEventListener) return
+
+    const handleDeviceChange = () => {
+      void loadMicrophones()
+    }
+
+    mediaDevices.addEventListener('devicechange', handleDeviceChange)
+    return () => mediaDevices.removeEventListener('devicechange', handleDeviceChange)
+  }, [])
+
+  useEffect(() => {
+    if (!currentEdit) {
+      setQualityHints([])
+      return
+    }
+    const stats = analyzeAudioQuality(currentEdit.buffer)
+    const hints: string[] = []
+    if (stats.rms < 0.02) hints.push('Recording level looks low. Move closer to the mic.')
+    if (stats.clippedRatio > 0.01) hints.push('Audio clipping detected. Reduce mic gain or step back slightly.')
+    setQualityHints(hints)
+  }, [currentEdit])
 
   const initAudioContext = () => {
     if (!audioContextRef.current || audioContextRef.current.state === 'closed')
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
+  }
+
+  const stopAudioVisualization = () => {
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current)
+      animationRef.current = null
+    }
+    if (analyserRef.current) {
+      analyserRef.current.disconnect()
+      analyserRef.current = null
+    }
+    if (sourceRef.current) {
+      sourceRef.current.disconnect()
+      sourceRef.current = null
+    }
+    lastAudioUiUpdateRef.current = 0
+    setAudioLevel(0)
+    setIsAudioDetected(false)
   }
 
   // ── Effects ───────────────────────────────────────────────────────────────
@@ -226,19 +579,57 @@ export default function RecordPage() {
 
   // ── Recording ─────────────────────────────────────────────────────────────
   const startRecording = async () => {
+    setUploadError('')
+    setIsStartingRecording(true)
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setUploadError('Microphone recording is not supported in this browser. Please use a modern browser like Chrome, Edge, or Firefox.')
+      setIsStartingRecording(false)
+      return
+    }
+
+    if (typeof MediaRecorder === 'undefined') {
+      setUploadError('MediaRecorder is not available in this environment. Please open this app in an external browser to record audio.')
+      setIsStartingRecording(false)
+      return
+    }
+
+    if (!window.isSecureContext) {
+      setUploadError('Microphone access requires a secure context. Open the app on localhost or HTTPS.')
+      setIsStartingRecording(false)
+      return
+    }
+
     try {
-      initAudioContext()
-      
-      // High quality audio constraints
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: false,        // Disable for better quality
-          noiseSuppression: false,        // Disable for better quality  
-          autoGainControl: false,         // Disable for consistent levels
-          sampleRate: 48000,              // High sample rate
-          channelCount: 2,                // Stereo recording
+      if (navigator.permissions?.query) {
+        const permission = await navigator.permissions.query({ name: 'microphone' as PermissionName })
+        if (permission.state === 'denied') {
+          setUploadError('Microphone permission is blocked. Enable microphone access in your browser settings.')
+          setIsStartingRecording(false)
+          return
         }
-      })
+      }
+
+      initAudioContext()
+
+      const preferredConstraints: MediaTrackConstraints = {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        channelCount: recordingQuality === 'high' ? { ideal: 2 } : { ideal: 1 },
+        sampleRate: recordingQuality === 'high' ? { ideal: 48000 } : { ideal: 44100 },
+        ...(selectedMicId ? { deviceId: { exact: selectedMicId } } : {}),
+      }
+
+      let stream: MediaStream
+      try {
+        stream = await requestMicrophoneStream(preferredConstraints)
+      } catch (error: any) {
+        const fallbackAllowed = ['TimeoutError', 'AbortError', 'OverconstrainedError'].includes(error?.name || '')
+        if (!fallbackAllowed) throw error
+        stream = await requestMicrophoneStream(true, 6000)
+      }
+      void loadMicrophones()
       
       // Set up audio analysis for visualization
       const ctx = audioContextRef.current!
@@ -255,14 +646,18 @@ export default function RecordPage() {
       const draw = () => {
         if (!analyserRef.current) return
         analyserRef.current.getByteFrequencyData(dataArray)
-        
+
         // Calculate average level
         let sum = 0
         for (let i = 0; i < dataArray.length; i++) sum += dataArray[i]
         const avg = sum / dataArray.length
-        setAudioLevel(avg)
-        setIsAudioDetected(avg > 10)
-        
+        const now = performance.now()
+        if (now - lastAudioUiUpdateRef.current >= 100) {
+          setAudioLevel(avg)
+          setIsAudioDetected(avg > 10)
+          lastAudioUiUpdateRef.current = now
+        }
+
         // Draw on canvas if available
         const canvas = canvasRef.current
         if (canvas) {
@@ -272,7 +667,7 @@ export default function RecordPage() {
             const height = canvas.height
             ctx2d.fillStyle = '#f1f5f9'
             ctx2d.fillRect(0, 0, width, height)
-            
+
             const barWidth = (width / dataArray.length) * 2.5
             let x = 0
             for (let i = 0; i < dataArray.length; i++) {
@@ -286,31 +681,13 @@ export default function RecordPage() {
             }
           }
         }
-        
+
         animationRef.current = requestAnimationFrame(draw)
       }
       draw()
       
-      // Use best available MIME type for quality
-      const mimeTypes = [
-        'audio/webm;codecs=opus',
-        'audio/webm',
-        'audio/ogg;codecs=opus',
-        'audio/mp4',
-        'audio/wav',
-      ]
-      let selectedMimeType = 'audio/webm'
-      for (const mime of mimeTypes) {
-        if (MediaRecorder.isTypeSupported(mime)) {
-          selectedMimeType = mime
-          break
-        }
-      }
-      
-      const mr = new MediaRecorder(stream, {
-        mimeType: selectedMimeType,
-        audioBitsPerSecond: 256000,  // High bitrate for quality
-      })
+      const targetBitrate = RECORDING_QUALITY_PRESETS[recordingQuality].audioBitsPerSecond
+      const { recorder: mr, mimeType: selectedMimeType } = createMediaRecorderWithFallback(stream, targetBitrate)
       
       mediaRecorderRef.current = mr
       audioChunksRef.current = []
@@ -320,13 +697,8 @@ export default function RecordPage() {
       }
       
       mr.onstop = async () => {
-        // Stop visualization
-        if (animationRef.current) cancelAnimationFrame(animationRef.current)
-        if (analyserRef.current) { analyserRef.current.disconnect(); analyserRef.current = null }
-        if (sourceRef.current) { sourceRef.current.disconnect(); sourceRef.current = null }
-        setAudioLevel(0)
-        setIsAudioDetected(false)
-        
+        stopAudioVisualization()
+
         // Create blob with proper MIME type
         const blob = new Blob(audioChunksRef.current, { type: selectedMimeType })
         console.log('[Recording] Created blob:', blob.size, 'bytes, type:', selectedMimeType)
@@ -339,11 +711,25 @@ export default function RecordPage() {
       setIsPaused(false)
       timerRef.current = setInterval(() => setRecordTime(p => p + 1), 1000)
       
-      console.log('[Recording] Started with:', selectedMimeType, 'bitrate: 256kbps')
+      console.log('[Recording] Started with:', selectedMimeType, 'bitrate:', `${Math.round(targetBitrate / 1000)}kbps`)
       
     } catch (err: any) {
+      stopAudioVisualization()
       console.error('[Recording] Error:', err)
-      setUploadError('Microphone access denied or not available. Please check permissions.')
+      const name = err?.name || ''
+      if (name === 'NotAllowedError' || name === 'SecurityError') {
+        setUploadError('Microphone permission was denied. Allow microphone access for this page. If using VS Code preview, open in an external browser and try again.')
+      } else if (name === 'NotFoundError') {
+        setUploadError('No microphone device was found. Connect a microphone and try again.')
+      } else if (name === 'NotReadableError') {
+        setUploadError('Microphone is busy or unavailable. Close other apps using the mic and try again.')
+      } else if (name === 'TimeoutError' || name === 'AbortError') {
+        setUploadError('Microphone access took too long. Try again, close other apps using the mic, or open this page in an external browser.')
+      } else {
+        setUploadError('Could not start recording. Please check microphone permissions and try again.')
+      }
+    } finally {
+      setIsStartingRecording(false)
     }
   }
 
@@ -433,6 +819,7 @@ export default function RecordPage() {
     wavesurferRef.current?.destroy(); setAudioBlob(null); setCurrentEdit(null); setEditHistory([]); setHistoryIndex(-1)
     setRecordTime(0); setSelectedRegion(null); setHasRegion(false); setActiveEffect('none')
     setShowUploadForm(false); setUploadedCategory(null); setUploadError(''); setLoadedDraftId(null)
+    setUploadStatus(null); setSyncStatusMessage('')
     audioChunksRef.current = []
   }
   const handleZoom = (d: number) => { const nz = Math.max(10, Math.min(200, zoom + d)); setZoom(nz); wavesurferRef.current?.zoom(nz) }
@@ -480,19 +867,22 @@ export default function RecordPage() {
     if (cat === 'quran') return QURAN_RECITERS
     if (cat === 'nasheeds') return NASHEED_ARTISTS
     if (cat === 'talks') return TALKS_SPEAKERS
+    if (cat === 'audiobooks') return AUDIOBOOK_AUTHORS
+    if (cat === 'hadith') return HADITH_NARRATORS
     return []
   }
   const reciters = getReciters(category)
   const showCustomReciter = reciter === 'Other' || reciters.length === 0
 
   // ── Teleprompter functions ─────────────────────────────────────────────────
+  const [manualScrollMode, setManualScrollMode] = useState(false)
+
   const startPrompterScroll = () => {
-    if (!prompterRef.current || isScrolling) return
+    if (!prompterRef.current || isScrolling || manualScrollMode) return
     setIsScrolling(true)
     scrollIntervalRef.current = setInterval(() => {
       if (prompterRef.current) {
         prompterRef.current.scrollTop += prompterSpeed / 20
-        // Auto-stop at bottom
         if (prompterRef.current.scrollTop >= prompterRef.current.scrollHeight - prompterRef.current.clientHeight - 10) {
           stopPrompterScroll()
         }
@@ -513,15 +903,33 @@ export default function RecordPage() {
     else startPrompterScroll()
   }
 
-  // Auto-start/stop prompter with recording
+  // Auto-start/stop prompter with recording (only in auto mode)
   useEffect(() => {
+    if (manualScrollMode) return // Don't auto-scroll in manual mode
     if (isRecording && showTeleprompter && prompterText.trim()) {
       startPrompterScroll()
     } else if (!isRecording) {
       stopPrompterScroll()
     }
     return () => stopPrompterScroll()
-  }, [isRecording, showTeleprompter])
+  }, [isRecording, showTeleprompter, manualScrollMode])
+
+  useEffect(() => {
+    return () => {
+      stopAudioVisualization()
+      if (scrollIntervalRef.current) {
+        clearInterval(scrollIntervalRef.current)
+        scrollIntervalRef.current = null
+      }
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+        timerRef.current = null
+      }
+      wavesurferRef.current?.destroy()
+      wavesurferRef.current = null
+      regionsPluginRef.current = null
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -529,46 +937,113 @@ export default function RecordPage() {
       setUploadError('No audio to upload. Please record first.')
       return
     }
-    
+
     setUploading(true)
     setUploadError('')
-    
+    setSyncStatusMessage('')
+
     try {
-      // Convert edited audio to WAV for consistent upload format
-      const wavBlob = audioBufferToWav(currentEdit.buffer)
-      console.log('[Upload] WAV blob created:', wavBlob.size, 'bytes')
-      
-      // Create file with proper name
+      let workingBuffer = currentEdit.buffer
+      if (autoEnhanceAudio) {
+        try {
+          workingBuffer = await enhanceSpeechBuffer(currentEdit.buffer)
+        } catch (error) {
+          console.warn('[Recorder] auto-enhance failed, continuing with original audio', error)
+        }
+      }
+
+      const wavBlob = audioBufferToWav(workingBuffer)
       const timestamp = Date.now()
       const safeTitle = (title || 'Recording').replace(/[^a-z0-9]/gi, '_').substring(0, 30)
       const fileName = `${safeTitle}_${timestamp}.wav`
-      const file = new File([wavBlob], fileName, { type: 'audio/wav' })
-      
-      const effectiveReciter = reciter === 'Other' ? customReciter : reciter
-      
-      console.log('[Upload] Uploading:', fileName, 'to category:', category)
-      
-      const ok = await uploadTrack(file, {
-        title: title || `Recording ${new Date().toLocaleString()}`,
-        category,
-        reciter: effectiveReciter || 'Unknown Speaker',
-        topic: category === 'talks' ? topic : undefined,
-      })
-      
-      if (ok) {
-        console.log('[Upload] Success!')
-        setUploadedCategory(category)
-        if (loadedDraftId) {
-          await deleteDraft(loadedDraftId)
-          await loadDraftList()
-        }
-        setShowUploadForm(false)
-      } else {
-        setUploadError(hookError || 'Upload failed. Please try again.')
+      let file = new File([wavBlob], fileName, { type: 'audio/wav' })
+
+      if (!file.type.startsWith('audio/')) {
+        throw new Error('Generated file is not recognized as audio. Please record again.')
       }
-    } catch (err: any) {
+
+      // Optional silence trimming
+      if (trimLeadingSilenceOnUpload || trimTrailingSilenceOnUpload) {
+        try {
+          const trimmed = await trimSilenceFromFile(file, {
+            trimLeading: trimLeadingSilenceOnUpload,
+            trimTrailing: trimTrailingSilenceOnUpload,
+          })
+          file = trimmed.file
+        } catch {
+          // keep original file if trim fails
+        }
+      }
+
+      if (file.size > getMaxUploadBytes(!!user)) {
+        throw new Error(`Recording is too large to upload. Please keep it under ${user ? '100MB' : '75MB'}.`)
+      }
+
+      const finalTitle = title.trim() || `Recording ${new Date().toLocaleString()}`
+      const duration = await extractDurationFromFile(file)
+      const adminCategory = UNCATEGORIZED_CATEGORY
+      const effectiveReciter = contributorName.trim() || 'Contributor'
+
+      const submissionPayload = {
+        title: finalTitle,
+        category: adminCategory,
+        reciter: effectiveReciter,
+        contributorName: contributorName.trim() || 'Contributor',
+        email: contributorEmail.trim(),
+        mobile: contributorMobile.trim(),
+        duration,
+      }
+
+      await submitUserRecordingForReview(file, submissionPayload, { requireFirebaseStorage: true })
+      setUploadStatus('pending')
+      trackEvent('record_submission_pending', { category: adminCategory, reciter: effectiveReciter })
+
+      // Refresh global track list so new upload is visible everywhere
+      refresh()
+
+      // Clean up draft in background — never blocks success
+      if (loadedDraftId) {
+        const draftId = loadedDraftId
+        setLoadedDraftId(null)
+        void deleteDraft(draftId).then(() => loadDraftList()).catch(() => {})
+      }
+
+      setShowUploadForm(false)
+      setUploadedCategory(adminCategory)
+    } catch (err: unknown) {
       console.error('[Upload] Error:', err)
-      setUploadError(err.message || 'Upload failed. Please try again.')
+
+      if (isOfflineUploadError(err)) {
+        const duration = currentEdit.duration
+        const fallbackTitle = title.trim() || `Recording ${new Date().toLocaleString()}`
+        const effectiveReciter = contributorName.trim() || 'Contributor'
+        const adminCategory = UNCATEGORIZED_CATEGORY
+        const queuedFileName = `${fallbackTitle.replace(/[^a-z0-9]/gi, '_').substring(0, 30)}_${Date.now()}.wav`
+        const queuedBlob = audioBufferToWav(currentEdit.buffer)
+
+        const pendingUpload: PendingRecorderUpload = {
+          id: crypto.randomUUID(),
+          savedAt: Date.now(),
+          fileName: queuedFileName,
+          mimeType: 'audio/wav',
+          blob: queuedBlob,
+          metadata: {
+            title: fallbackTitle,
+            category: adminCategory,
+            reciter: effectiveReciter,
+            duration,
+            contributorName: contributorName.trim() || 'Contributor',
+            email: contributorEmail.trim(),
+            mobile: contributorMobile.trim(),
+          },
+        }
+
+        await savePendingRecorderUpload(pendingUpload)
+        await loadPendingUploadCount()
+        setUploadError('No internet right now. Your recording was safely queued and will sync when connection returns.')
+      } else {
+        setUploadError(mapUploadError(err))
+      }
     } finally {
       setUploading(false)
     }
@@ -576,39 +1051,55 @@ export default function RecordPage() {
 
   const canUndo = historyIndex > 0, canRedo = historyIndex < editHistory.length - 1
 
-  // ── Auth screen ───────────────────────────────────────────────────────────
-  if (!authenticated) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-slate-200 p-8">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-violet-100 flex items-center justify-center mx-auto mb-4"><Mic size={28} className="text-violet-600" /></div>
-            <h1 className="text-2xl font-bold text-slate-800">Audio Recorder</h1>
-            <p className="text-slate-500 text-sm mt-2">Record, edit and save audio drafts</p>
-          </div>
-          <form onSubmit={handleAuth} className="space-y-4">
-            <input type="text" value={username} onChange={e => setUsername(e.target.value)} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-sm" placeholder="Username" />
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-sm" placeholder="Password" />
-            {authError && <div className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{authError}</div>}
-            <button type="submit" className="w-full bg-violet-600 text-white font-semibold py-3 rounded-xl">Access Recorder</button>
-          </form>
-          <p className="text-center text-slate-400 text-xs mt-6">Default: recorder / record123</p>
-        </div>
-      </div>
-    )
+  // ── Transcription handler ────────────────────────────────────────────────
+  const handleTranscribe = async () => {
+    if (!currentEdit) return
+    
+    // Convert audio buffer to blob for transcription
+    const wavBlob = audioBufferToWav(currentEdit.buffer)
+    const file = new File([wavBlob], 'recording.wav', { type: 'audio/wav' })
+    
+    if (!canTranscribe(file)) {
+      setUploadError('Audio file is too large for transcription (max 25MB)')
+      return
+    }
+    
+    setIsTranscribing(true)
+    setTranscriptionModalOpen(true)
+    setTranscriptionError(null)
+    setTranscribedText('')
+    
+    const result = await transcribeAudio(file)
+    
+    if (result.success) {
+      setTranscribedText(result.text)
+    } else {
+      setTranscriptionError(result.error || 'Transcription failed')
+    }
+    
+    setIsTranscribing(false)
+  }
+
+  const handleApplyTranscription = (text: string) => {
+    setTextContent(text)
   }
 
   // ── Upload success ────────────────────────────────────────────────────────
   if (uploadedCategory) {
-    const catLabel = ALL_CATEGORIES_LIST.find(c => c.value === uploadedCategory)?.label || uploadedCategory
+    const catLabel = formatCategoryLabel(uploadedCategory)
+    const nextRoute = CATEGORY_ROUTES[uploadedCategory] || '/'
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-slate-200 p-8 text-center">
           <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4"><CheckCircle size={40} className="text-emerald-500" /></div>
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">Uploaded!</h2>
-          <p className="text-slate-500 mb-6">Your recording "<strong>{title}</strong>" has been saved to <strong>{catLabel}</strong>.</p>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">{uploadStatus === 'pending' ? 'Submitted for Review' : 'Uploaded!'}</h2>
+          <p className="text-slate-500 mb-6">
+            {uploadStatus === 'pending'
+              ? `Your recording "${title}" is pending admin approval. The admin can add or change its category before it goes live.`
+              : `Your recording "${title}" has been saved to ${catLabel}.`}
+          </p>
           <div className="flex flex-col gap-3">
-            <button onClick={() => navigate(CATEGORY_ROUTES[uploadedCategory])} className="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold py-3 rounded-xl">Go to {catLabel} →</button>
+            <button onClick={() => navigate(nextRoute)} className="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold py-3 rounded-xl">{uploadedCategory === UNCATEGORIZED_CATEGORY ? 'Back to Home' : `Go to ${catLabel} →`}</button>
             <button onClick={resetRecording} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-3 rounded-xl">Record Another</button>
           </div>
         </div>
@@ -619,6 +1110,31 @@ export default function RecordPage() {
   return (
     <div className="min-h-screen bg-slate-50 py-10 px-4">
       <div className="max-w-5xl mx-auto">
+        {pendingUploadCount > 0 && (
+          <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-amber-900">
+                {pendingUploadCount} recording{pendingUploadCount > 1 ? 's' : ''} waiting to sync.
+              </p>
+              <button
+                type="button"
+                onClick={() => void syncPendingUploads()}
+                disabled={syncingPendingUploads}
+                className="rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+              >
+                {syncingPendingUploads ? 'Syncing...' : 'Sync now'}
+              </button>
+            </div>
+            {syncStatusMessage && <p className="mt-1 text-xs text-amber-700">{syncStatusMessage}</p>}
+          </div>
+        )}
+
+        <div className="mb-5 rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-50 to-indigo-50 px-4 py-3 text-center shadow-sm">
+          <p className="text-sm sm:text-base font-semibold text-slate-800">
+            Share your talent by recording Quran, nasheeds. Best will be published on the app.
+          </p>
+        </div>
+
         <div className="text-center mb-6">
           <div className="w-16 h-16 rounded-2xl bg-violet-100 flex items-center justify-center mx-auto mb-3"><Mic size={28} className="text-violet-600" /></div>
           <h1 className="text-2xl font-bold text-slate-800">Record & Edit Audio</h1>
@@ -683,6 +1199,62 @@ export default function RecordPage() {
 
               {!audioBlob ? (
                 <div className="text-center py-6">
+                  <div className="max-w-md mx-auto mb-5 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <p className="text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Microphone</p>
+                      <button
+                        type="button"
+                        onClick={() => void loadMicrophones()}
+                        disabled={isLoadingMics || isRecording}
+                        className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <RefreshCw size={12} className={isLoadingMics ? 'animate-spin' : ''} />
+                        Refresh
+                      </button>
+                    </div>
+                    <select
+                      value={selectedMicId}
+                      onChange={(e) => setSelectedMicId(e.target.value)}
+                      disabled={isRecording || availableMics.length === 0}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                    >
+                      {availableMics.length === 0 ? (
+                        <option value="">No microphone detected</option>
+                      ) : (
+                        availableMics.map((mic, index) => (
+                          <option key={mic.deviceId || `${mic.groupId}-${index}`} value={mic.deviceId}>
+                            {mic.label || `Microphone ${index + 1}`}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                    <p className="mt-1.5 text-left text-xs text-slate-500">
+                      Tip: if your mic is missing, allow microphone access once, then click refresh.
+                    </p>
+
+                    <div className="mt-3 border-t border-slate-200 pt-3">
+                      <p className="text-left text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2">Recording quality</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(Object.entries(RECORDING_QUALITY_PRESETS) as Array<[RecordingQuality, (typeof RECORDING_QUALITY_PRESETS)[RecordingQuality]]>).map(([quality, preset]) => (
+                          <button
+                            key={quality}
+                            type="button"
+                            onClick={() => setRecordingQuality(quality)}
+                            disabled={isRecording}
+                            className={`rounded-lg border px-3 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                              recordingQuality === quality
+                                ? 'border-violet-500 bg-violet-50'
+                                : 'border-slate-200 bg-white hover:bg-slate-100'
+                            }`}
+                          >
+                            <p className="text-sm font-semibold text-slate-800">{preset.label}</p>
+                            <p className="text-xs text-slate-500">{preset.description} · {Math.round(preset.audioBitsPerSecond / 1000)}kbps</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Teleprompter */}
                   {showTeleprompter && (
                     <div className="mb-6 bg-black rounded-xl border-2 border-slate-700 overflow-hidden">
@@ -708,21 +1280,23 @@ export default function RecordPage() {
                         <>
                           <div
                             ref={prompterRef}
-                            className="h-40 overflow-hidden p-6 text-center"
+                            className="h-40 overflow-y-auto p-6 text-center cursor-text"
                             style={{
                               fontSize: `${prompterFontSize}px`,
                               lineHeight: '1.6',
                               color: 'white',
                               textShadow: '0 0 10px rgba(255,255,255,0.3)',
+                              scrollBehavior: 'smooth'
                             }}
                           >
                             {prompterText}
                           </div>
                           {/* Prompter controls */}
-                          <div className="flex items-center justify-center gap-3 p-3 bg-slate-900 border-t border-slate-700">
+                          <div className="flex items-center justify-center gap-3 p-3 bg-slate-900 border-t border-slate-700 flex-wrap">
                             <button
                               onClick={togglePrompterScroll}
-                              className={`p-2 rounded-lg ${isScrolling ? 'bg-amber-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+                              disabled={manualScrollMode}
+                              className={`p-2 rounded-lg ${manualScrollMode ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : isScrolling ? 'bg-amber-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
                               title={isScrolling ? 'Pause' : 'Play'}
                             >
                               {isScrolling ? <Pause size={18} /> : <Play size={18} />}
@@ -735,6 +1309,21 @@ export default function RecordPage() {
                               <RotateCcw size={18} />
                             </button>
                             <div className="h-6 w-px bg-slate-700" />
+                            <button
+                              onClick={() => {
+                                setManualScrollMode(!manualScrollMode)
+                                if (isScrolling) stopPrompterScroll()
+                              }}
+                              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                manualScrollMode 
+                                  ? 'bg-green-600 text-white' 
+                                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                              }`}
+                              title={manualScrollMode ? 'Manual scroll enabled' : 'Enable manual scroll'}
+                            >
+                              {manualScrollMode ? '✋ Manual' : '🤖 Auto'}
+                            </button>
+                            <div className="h-6 w-px bg-slate-700" />
                             <span className="text-xs text-slate-400">Speed:</span>
                             <input
                               type="range"
@@ -742,7 +1331,8 @@ export default function RecordPage() {
                               max="100"
                               value={prompterSpeed}
                               onChange={(e) => setPrompterSpeed(Number(e.target.value))}
-                              className="w-24"
+                              disabled={manualScrollMode}
+                              className={`w-24 ${manualScrollMode ? 'opacity-50 cursor-not-allowed' : ''}`}
                             />
                             <div className="h-6 w-px bg-slate-700" />
                             <span className="text-xs text-slate-400">Size:</span>
@@ -802,7 +1392,15 @@ export default function RecordPage() {
 
                   <div className="flex items-center justify-center gap-4">
                     {!isRecording ? (
-                      <button onClick={startRecording} className="w-20 h-20 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg transition-transform hover:scale-105">
+                      <button
+                        onClick={startRecording}
+                        disabled={isStartingRecording}
+                        className={`w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-transform ${
+                          isStartingRecording
+                            ? 'bg-red-300 cursor-wait'
+                            : 'bg-red-500 hover:bg-red-600 hover:scale-105'
+                        }`}
+                      >
                         <Mic size={32} className="text-white" />
                       </button>
                     ) : (
@@ -821,13 +1419,15 @@ export default function RecordPage() {
                     <div className="flex items-center justify-center gap-2 mt-4">
                       <span className={`w-2.5 h-2.5 rounded-full animate-pulse ${isPaused ? 'bg-amber-500' : 'bg-red-500'}`} />
                       <span className="text-slate-500 text-sm">{isPaused ? 'Paused' : 'Recording...'}</span>
-                      <span className="text-xs text-slate-400 ml-2">(48kHz stereo, 256kbps)</span>
+                      <span className="text-xs text-slate-400 ml-2">({recordingQuality === 'high' ? '48kHz stereo' : '44.1kHz mono'}, {Math.round(RECORDING_QUALITY_PRESETS[recordingQuality].audioBitsPerSecond / 1000)}kbps)</span>
                     </div>
                   )}
 
                   {!isRecording && recordTime === 0 && (
                     <>
-                      <p className="text-slate-500 text-sm mt-6">Click the microphone to start recording</p>
+                      <p className="text-slate-500 text-sm mt-6">
+                        {isStartingRecording ? 'Requesting microphone access...' : 'Click the microphone to start recording'}
+                      </p>
                       <p className="text-slate-400 text-xs mt-2">You'll see a live waveform when audio is detected</p>
                       <button
                         onClick={() => setShowTeleprompter(!showTeleprompter)}
@@ -836,6 +1436,12 @@ export default function RecordPage() {
                         {showTeleprompter ? '📜 Hide Teleprompter' : '📜 Show Teleprompter'}
                       </button>
                     </>
+                  )}
+
+                  {uploadError && (
+                    <div className="mt-4 text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded-lg max-w-xl mx-auto">
+                      {uploadError}
+                    </div>
                   )}
                 </div>
               ) : (
@@ -944,53 +1550,126 @@ export default function RecordPage() {
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
               <h3 className="text-lg font-bold text-slate-800 mb-4">Upload Recording</h3>
+              <div className="mb-4 rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-amber-50 p-4">
+                <p className="text-sm font-semibold text-emerald-900">This recording feature is mainly for ages 14 and above.</p>
+                <p className="mt-1 text-sm text-emerald-800">You will also get a chance to win takeaway vouchers and Juice4Life prizes.</p>
+                <p className="mt-2 text-sm text-slate-700">For children under 14, please visit the Kids Zone instead.</p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/kids-recordings')}
+                  className="mt-3 inline-flex items-center rounded-xl bg-white px-3 py-2 text-sm font-semibold text-emerald-700 border border-emerald-200 hover:bg-emerald-50"
+                >
+                  Go to Kids Zone
+                </button>
+              </div>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Title *</label>
                   <input type="text" value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-violet-400" placeholder="Enter a title" required />
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Category *</label>
-                  <select value={category} onChange={e => { setCategory(e.target.value as AudioCategory); setReciter(''); setTopic('') }} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-sm">
-                    {ALL_CATEGORIES_LIST.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
-                  </select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Contributor name *</label>
+                    <input
+                      type="text"
+                      value={contributorName}
+                      onChange={(e) => setContributorName(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-sm"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Mobile number *</label>
+                    <input
+                      type="tel"
+                      value={contributorMobile}
+                      onChange={(e) => setContributorMobile(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-sm"
+                      placeholder="e.g. 07123 456789"
+                      required
+                    />
+                  </div>
                 </div>
-                {reciters.length > 0 && (
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Email address *</label>
+                  <input
+                    type="email"
+                    value={contributorEmail}
+                    onChange={(e) => setContributorEmail(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-sm"
+                    placeholder="name@example.com"
+                    required
+                  />
+                </div>
+
+                <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                  <input
+                    type="checkbox"
+                    checked={autoEnhanceAudio}
+                    onChange={e => setAutoEnhanceAudio(e.target.checked)}
+                    className="mt-0.5"
+                  />
                   <div>
-                    <label className="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Speaker / Artist *</label>
-                    <select value={reciter} onChange={e => setReciter(e.target.value)} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-sm">
-                      <option value="">-- Select --</option>
-                      {reciters.map(r => <option key={r} value={r}>{r}</option>)}
-                      <option value="Other">Other</option>
-                    </select>
+                    <p className="text-sm font-medium text-slate-700">Auto noise reduction + loudness normalize</p>
+                    <p className="text-xs text-slate-500">Applies gentle high-pass filtering and auto level normalization before upload.</p>
+                  </div>
+                </label>
+
+                {qualityHints.length > 0 && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    {qualityHints.map((hint) => (
+                      <p key={hint}>• {hint}</p>
+                    ))}
                   </div>
                 )}
-                {showCustomReciter && (
+
+                <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                  <input
+                    type="checkbox"
+                    checked={trimLeadingSilenceOnUpload}
+                    onChange={e => setTrimLeadingSilenceOnUpload(e.target.checked)}
+                    className="mt-0.5"
+                  />
                   <div>
-                    <label className="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Name *</label>
-                    <input type="text" value={customReciter} onChange={e => setCustomReciter(e.target.value)} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-sm" required />
+                    <p className="text-sm font-medium text-slate-700">Remove leading silence</p>
+                    <p className="text-xs text-slate-500">Cuts silent audio from the beginning before upload.</p>
                   </div>
-                )}
-                {category === 'talks' && (
+                </label>
+                <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                  <input
+                    type="checkbox"
+                    checked={trimTrailingSilenceOnUpload}
+                    onChange={e => setTrimTrailingSilenceOnUpload(e.target.checked)}
+                    className="mt-0.5"
+                  />
                   <div>
-                    <label className="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Topic *</label>
-                    <select value={topic} onChange={e => setTopic(e.target.value)} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-sm" required>
-                      <option value="">-- Select Topic --</option>
-                      {TALKS_TOPICS.map(t => <option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
-                    </select>
+                    <p className="text-sm font-medium text-slate-700">Remove trailing silence</p>
+                    <p className="text-xs text-slate-500">Cuts silent audio from the end before upload.</p>
                   </div>
-                )}
-                {(uploadError || hookError) && <div className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{uploadError || hookError}</div>}
+                </label>
+                {uploadError && <div className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{uploadError}</div>}
                 <div className="flex gap-3 pt-1">
                   <button type="button" onClick={() => setShowUploadForm(false)} className="flex-1 px-4 py-3 border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 text-sm">Cancel</button>
-                  <button type="submit" disabled={uploading || !title || (reciters.length > 0 && !reciter && !customReciter) || (category === 'talks' && !topic)} className="flex-1 bg-violet-600 hover:bg-violet-700 disabled:bg-slate-200 text-white py-3 rounded-xl font-semibold text-sm">
-                    {uploading ? 'Uploading...' : 'Upload'}
+                  <button type="submit" disabled={uploading || !title.trim() || !contributorName.trim() || !contributorMobile.trim() || !contributorEmail.trim()} className="flex-1 bg-violet-600 hover:bg-violet-700 disabled:bg-slate-200 text-white py-3 rounded-xl font-semibold text-sm">
+                    {uploading ? 'Submitting...' : 'Submit for Review'}
                   </button>
                 </div>
               </form>
             </div>
           </div>
         )}
+
+        {/* Transcription Modal */}
+        <TranscriptionModal
+          isOpen={transcriptionModalOpen}
+          onClose={() => setTranscriptionModalOpen(false)}
+          onApply={handleApplyTranscription}
+          initialText={transcribedText}
+          isLoading={isTranscribing}
+          error={transcriptionError}
+          fileName="recording.wav"
+          useWebSpeech={true}
+        />
       </div>
     </div>
   )

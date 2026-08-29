@@ -1,18 +1,36 @@
-import React, { useState, useEffect } from 'react'
-import { BookOpen, Search, ChevronDown, FileText, X } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { BookOpen, Search, ChevronDown, FileText, X, Eye } from 'lucide-react'
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
 import TrackList from '../components/TrackList'
+import CategoryUploadPanel from '../components/CategoryUploadPanel'
 import { AUDIOBOOK_AUTHORS } from '../constants/categories'
 import type { AudioTrack } from '../types'
+import { formatViews } from '../lib/views'
 
 export default function AudiobookPage() {
-  const { tracks, refresh } = useAudioLibrary()
-  useEffect(() => { refresh() }, [])
+  const { tracks, loading } = useAudioLibrary()
   const allTracks = tracks.filter((t) => t.category === 'audiobooks')
   const [search, setSearch] = useState('')
   const [selectedAuthor, setSelectedAuthor] = useState<string>('all')
   const [showAuthorDropdown, setShowAuthorDropdown] = useState(false)
   const [selectedTrack, setSelectedTrack] = useState<AudioTrack | null>(null)
+
+  useEffect(() => {
+    if (!selectedTrack) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSelectedTrack(null)
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = previousOverflow
+    }
+  }, [selectedTrack])
 
   // Get unique authors from tracks + predefined list
   const trackAuthors = [...new Set(allTracks.map((t) => t.reciter))]
@@ -32,6 +50,9 @@ export default function AudiobookPage() {
     return matchesSearch && matchesAuthor
   })
 
+  // Calculate total views
+  const totalViews = allTracks.reduce((sum, t) => sum + (t.views || 0), 0)
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
       <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
@@ -41,7 +62,13 @@ export default function AudiobookPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-800">Islamic Audiobooks</h1>
-            <p className="text-slate-500 text-sm mt-0.5">{allTracks.length} book{allTracks.length !== 1 ? 's' : ''}</p>
+            <p className="text-slate-500 text-sm mt-0.5">
+              {allTracks.length} book{allTracks.length !== 1 ? 's' : ''} · {' '}
+              <span className="inline-flex items-center gap-1">
+                <Eye size={12} />
+                {formatViews(totalViews)}
+              </span>
+            </p>
           </div>
         </div>
         <div className="relative">
@@ -55,6 +82,8 @@ export default function AudiobookPage() {
           />
         </div>
       </div>
+
+      <CategoryUploadPanel category="audiobooks" className="mb-8" />
 
       {/* Filters Row */}
       <div className="flex flex-wrap items-center gap-4 mb-8">
@@ -128,15 +157,24 @@ export default function AudiobookPage() {
 
       {/* Text Content Modal */}
       {selectedTrack && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[80vh] flex flex-col">
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedTrack(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="audiobook-modal-title"
+            className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[80vh] flex flex-col"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
                   <FileText size={20} className="text-amber-600" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-800">{selectedTrack.title}</h3>
+                  <h3 id="audiobook-modal-title" className="font-bold text-slate-800">{selectedTrack.title}</h3>
                   <p className="text-sm text-slate-500">by {selectedTrack.reciter}</p>
                 </div>
               </div>
@@ -183,6 +221,12 @@ export default function AudiobookPage() {
                 )}
               </div>
             </div>
+          ))}
+        </div>
+      ) : loading && allTracks.length === 0 ? (
+        <div className="grid grid-cols-1 gap-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-28 rounded-3xl skeleton" />
           ))}
         </div>
       ) : (

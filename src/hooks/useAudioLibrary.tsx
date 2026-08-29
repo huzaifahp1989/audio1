@@ -2,11 +2,15 @@ import { createContext, useContext, useState, useCallback, useEffect, type React
 import type { AudioTrack, AudioCategory } from '../types'
 import {
   uploadAudioToCloud,
+  createTrackFromRemote,
   deleteAudioFromCloud,
   updateTrackInCloud,
   getAllTracks,
   getTracksByCategory,
 } from '../lib/storage'
+import { normalizeAudioFileForPlayback, trimSilenceFromFile } from '../lib/audioProcessing'
+import { subscribeToVotes } from '../lib/votes'
+import { trackEvent } from '../lib/analytics'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 export interface BulkUploadItem {
@@ -30,15 +34,23 @@ interface AudioLibraryState {
   uploading: boolean
   uploadError: string | null
   refresh: () => void
-  uploadTrack: (file: File, metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; text?: string }) => Promise<boolean>
-  bulkUpload: (items: BulkUploadItem[], onProgress?: (done: number, total: number) => void) => Promise<BulkUploadResult[]>
+  uploadTrack: (file: File, metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; text?: string; imageFile?: File; autoTrimLeadingSilence?: boolean; autoTrimTrailingSilence?: boolean }) => Promise<boolean>
+  importTrackFromUrl: (data: { audioUrl: string; title: string; category: AudioCategory; reciter: string; topic?: string; duration?: number; fileName: string; fileSize: number; mimeType: string }) => Promise<boolean>
+  bulkUpload: (items: BulkUploadItem[], onProgress?: (done: number, total: number) => void, options?: { autoTrimLeadingSilence?: boolean; autoTrimTrailingSilence?: boolean }) => Promise<BulkUploadResult[]>
   deleteTrackById: (id: string) => Promise<void>
   editTrack: (id: string, patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic'>>) => Promise<void>
   getByCategory: (category: AudioCategory) => Promise<AudioTrack[]>
+  incrementTrackView: (id: string, newViews?: number) => void
+  updateTrackVote: (id: string, newVotes: number) => void
 }
 
 // ── Context ───────────────────────────────────────────────────────────────
 const AudioLibraryContext = createContext<AudioLibraryState | null>(null)
+
+function isLikelyAudioFile(file: File): boolean {
+  if (file.type.startsWith('audio/')) return true
+  return /\.(mp3|wav|m4a|aac|ogg|opus|webm|flac)$/i.test(file.name)
+}
 
 async function extractDuration(file: File): Promise<number | undefined> {
   return new Promise((resolve) => {
@@ -72,24 +84,50 @@ export function AudioLibraryProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { loadTracks() }, [loadTracks])
 
+  // Live vote counts for all visitors (public Firestore reads)
+  useEffect(() => {
+    const unsubscribe = subscribeToVotes((voteMap) => {
+      setTracks((prev) =>
+        prev.map((t) => ({
+          ...t,
+          votes: voteMap[t.id] !== undefined ? voteMap[t.id] : (t.votes ?? 0),
+        })),
+      )
+    })
+    return unsubscribe
+  }, [])
+
   const refresh = useCallback(() => { loadTracks() }, [loadTracks])
 
   const uploadTrack = useCallback(async (
     file: File,
-    metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; text?: string }
+    metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; text?: string; imageFile?: File; autoTrimLeadingSilence?: boolean; autoTrimTrailingSilence?: boolean }
   ): Promise<boolean> => {
     setUploadError(null)
-    if (!file.type.startsWith('audio/')) { setUploadError('Please select a valid audio file.'); return false }
+    if (!isLikelyAudioFile(file)) { setUploadError('Please select a valid audio file.'); return false }
     if (!metadata.title.trim()) { setUploadError('Please enter a title.'); return false }
-    if (!metadata.reciter.trim()) { setUploadError('Please enter a speaker/artist name.'); return false }
 
     setUploading(true)
     try {
+      let uploadFile = await normalizeAudioFileForPlayback(file)
+      if (metadata.autoTrimLeadingSilence || metadata.autoTrimTrailingSilence) {
+        try {
+          const trimmed = await trimSilenceFromFile(uploadFile, {
+            trimLeading: !!metadata.autoTrimLeadingSilence,
+            trimTrailing: !!metadata.autoTrimTrailingSilence,
+          })
+          uploadFile = trimmed.file
+        } catch (trimErr) {
+          console.warn('[uploadTrack] Failed to trim leading silence, using original file:', trimErr)
+        }
+      }
+
       const id = crypto.randomUUID()
-      const duration = await extractDuration(file)
-      const { track } = await uploadAudioToCloud(file, id, { ...metadata, duration })
+      const duration = await extractDuration(uploadFile)
+      const { track } = await uploadAudioToCloud(uploadFile, id, { ...metadata, duration })
       // Add to shared state immediately — all pages see it instantly
       setTracks(prev => [track, ...prev])
+      trackEvent('upload_track', { category: metadata.category, source: 'library_upload', track_id: track.id })
       return true
     } catch (err: any) {
       const msg = err?.message || 'Upload failed. Please try again.'
@@ -101,9 +139,34 @@ export function AudioLibraryProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const importTrackFromUrl = useCallback(async (
+    data: { audioUrl: string; title: string; category: AudioCategory; reciter: string; topic?: string; duration?: number; fileName: string; fileSize: number; mimeType: string }
+  ): Promise<boolean> => {
+    setUploadError(null)
+    if (!data.audioUrl) { setUploadError('Missing audio URL from import.'); return false }
+    if (!data.title.trim()) { setUploadError('Please enter a title.'); return false }
+    if (!data.reciter.trim()) { setUploadError('Please choose a reciter / artist / speaker.'); return false }
+
+    setUploading(true)
+    try {
+      const track = await createTrackFromRemote(data)
+      setTracks(prev => [track, ...prev])
+      trackEvent('import_track_url', { category: data.category, track_id: track.id })
+      return true
+    } catch (err: any) {
+      const msg = err?.message || 'Import failed. Please try again.'
+      setUploadError(msg)
+      console.error('[importTrackFromUrl error]', err)
+      return false
+    } finally {
+      setUploading(false)
+    }
+  }, [])
+
   const bulkUpload = useCallback(async (
     items: BulkUploadItem[],
-    onProgress?: (done: number, total: number) => void
+    onProgress?: (done: number, total: number) => void,
+    options?: { autoTrimLeadingSilence?: boolean; autoTrimTrailingSilence?: boolean }
   ): Promise<BulkUploadResult[]> => {
     setUploading(true)
     setUploadError(null)
@@ -112,18 +175,30 @@ export function AudioLibraryProvider({ children }: { children: ReactNode }) {
     for (let i = 0; i < items.length; i++) {
       const { file, title, category, reciter, topic } = items[i]
       try {
-        if (!file.type.startsWith('audio/')) {
+        if (!isLikelyAudioFile(file)) {
           results.push({ fileName: file.name, success: false, error: 'Not a valid audio file' })
         } else if (!title.trim()) {
           results.push({ fileName: file.name, success: false, error: 'Title is required' })
-        } else if (!reciter.trim()) {
-          results.push({ fileName: file.name, success: false, error: 'Reciter/Artist is required' })
         } else {
+          let uploadFile = await normalizeAudioFileForPlayback(file)
+          if (options?.autoTrimLeadingSilence || options?.autoTrimTrailingSilence) {
+            try {
+              const trimmed = await trimSilenceFromFile(uploadFile, {
+                trimLeading: !!options?.autoTrimLeadingSilence,
+                trimTrailing: !!options?.autoTrimTrailingSilence,
+              })
+              uploadFile = trimmed.file
+            } catch (trimErr) {
+              console.warn('[bulkUpload] Failed to trim leading silence, using original file:', trimErr)
+            }
+          }
+
           const id = crypto.randomUUID()
-          const duration = await extractDuration(file)
-          const { track } = await uploadAudioToCloud(file, id, { title, category, reciter, topic, duration })
+          const duration = await extractDuration(uploadFile)
+          const { track } = await uploadAudioToCloud(uploadFile, id, { title, category, reciter, topic, duration })
           setTracks(prev => [track, ...prev])
-          results.push({ fileName: file.name, success: true })
+          trackEvent('bulk_upload_track', { category, track_id: track.id })
+          results.push({ fileName: uploadFile.name, success: true })
         }
       } catch (err: any) {
         results.push({ fileName: file.name, success: false, error: err.message || 'Upload failed' })
@@ -159,8 +234,21 @@ export function AudioLibraryProvider({ children }: { children: ReactNode }) {
     return getTracksByCategory(category)
   }, [])
 
+  // Increment track view locally (database is updated separately via API)
+  const incrementTrackView = useCallback((id: string, newViews?: number) => {
+    setTracks(prev => prev.map(t => 
+      t.id === id ? { ...t, views: newViews || (t.views || 0) + 1 } : t
+    ))
+  }, [])
+
+  const updateTrackVote = useCallback((id: string, newVotes: number) => {
+    setTracks(prev => prev.map(t =>
+      t.id === id ? { ...t, votes: Math.max(0, newVotes) } : t
+    ))
+  }, [])
+
   return (
-    <AudioLibraryContext.Provider value={{ tracks, loading, uploading, uploadError, refresh, uploadTrack, bulkUpload, deleteTrackById, editTrack, getByCategory }}>
+    <AudioLibraryContext.Provider value={{ tracks, loading, uploading, uploadError, refresh, uploadTrack, importTrackFromUrl, bulkUpload, deleteTrackById, editTrack, getByCategory, incrementTrackView, updateTrackVote }}>
       {children}
     </AudioLibraryContext.Provider>
   )

@@ -1,205 +1,580 @@
-import React, { useState, useEffect } from 'react'
-import { Mic2, Search, ChevronDown } from 'lucide-react'
+import React, { useMemo, useState } from 'react'
+
+import { Link } from 'react-router-dom'
+import { Mic2, Search, Eye, Sparkles, ChevronDown, Heart } from 'lucide-react'
+import { useFavorites } from '../context/FavoritesContext'
+
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
-import TrackList from '../components/TrackList'
+
+import CategoryUploadPanel from '../components/CategoryUploadPanel'
+
+import ContributorUploadNotice from '../components/ContributorUploadNotice'
+
+import TalkTrackRow from '../components/TalkTrackRow'
+
 import { TALKS_TOPICS, TALKS_SPEAKERS } from '../constants/categories'
 
-export default function TalksPage() {
-  const { tracks, refresh } = useAudioLibrary()
-  useEffect(() => { refresh() }, [])
-  const allTracks = tracks.filter((t) => t.category === 'talks')
-  const [search, setSearch] = useState('')
-  const [selectedTopic, setSelectedTopic] = useState<string>('all')
-  const [selectedSpeaker, setSelectedSpeaker] = useState<string>('all')
-  const [showTopicDropdown, setShowTopicDropdown] = useState(false)
-  const [showSpeakerDropdown, setShowSpeakerDropdown] = useState(false)
+import { buildContributorOptions, contributorMatches, countTracksForContributor } from '../lib/contributorMatch'
 
-  // Get unique speakers from tracks + predefined list
-  const trackSpeakers = [...new Set(allTracks.map((t) => t.reciter))]
-  const allSpeakers = [...new Set([...TALKS_SPEAKERS.filter(s => s !== 'Other'), ...trackSpeakers])].sort()
+import { formatViews } from '../lib/views'
+import { sortTracks, type SortOption } from '../lib/trackSort'
+import SortFilterBar from '../components/SortFilterBar'
+import PlayAllButton from '../components/PlayAllButton'
+import SpeakerProfileLink from '../components/SpeakerProfileLink'
+
+
+
+const SERIES_CATEGORIES = [
+
+  { id: 'sahabah', label: 'Sahabah', emoji: '👥', description: 'Lives of the Prophet\'s companions' },
+
+  { id: 'tafseer', label: 'Tafseer', emoji: '📖', description: 'Quranic commentary and explanation' },
+
+  { id: 'hadith-series', label: 'Hadith', emoji: '📜', description: 'Hadith studies and collections' },
+
+]
+
+
+
+export default function TalksPage() {
+
+  const { tracks, loading } = useAudioLibrary()
+  const { resolveFavoriteTracks } = useFavorites()
+  const talksFavoriteCount = useMemo(
+    () => resolveFavoriteTracks(tracks).filter((t) => t.category === 'talks').length,
+    [resolveFavoriteTracks, tracks]
+  )
+
+  const allTracks = tracks.filter((t) => t.category === 'talks')
+
+  const [search, setSearch] = useState('')
+
+  const [activeTab, setActiveTab] = useState<'all' | 'series'>('all')
+
+  const [selectedTopic, setSelectedTopic] = useState('All')
+
+  const [selectedSpeaker, setSelectedSpeaker] = useState('All')
+
+  const [selectedSeries, setSelectedSeries] = useState('All')
+  const [sort, setSort] = useState<SortOption>('newest')
+
+
+
+  const speakerOptions = useMemo(
+
+    () => buildContributorOptions(allTracks, TALKS_SPEAKERS),
+
+    [allTracks]
+
+  )
+
+
+
+  const topicOptions = useMemo(() => {
+
+    const fromTracks = [...new Set(allTracks.map((t) => t.topic).filter(Boolean))] as string[]
+
+    const featured = TALKS_TOPICS.map((t) => t.id)
+
+    const withTracks = featured.filter((id) => fromTracks.includes(id))
+
+    const extra = fromTracks.filter((id) => !featured.includes(id)).sort()
+
+    return ['All', ...withTracks, ...extra]
+
+  }, [allTracks])
+
+
 
   const filtered = allTracks.filter((t) => {
-    const matchesSearch = search
-      ? t.title.toLowerCase().includes(search.toLowerCase()) ||
-        t.reciter.toLowerCase().includes(search.toLowerCase())
+
+    const q = search.trim().toLowerCase()
+
+    const matchesSearch = q
+
+      ? t.title.toLowerCase().includes(q) ||
+
+        (t.reciter || '').toLowerCase().includes(q)
+
       : true
-    
-    const matchesTopic = selectedTopic !== 'all'
-      ? t.topic === selectedTopic
-      : true
-    
-    const matchesSpeaker = selectedSpeaker !== 'all'
-      ? t.reciter === selectedSpeaker
-      : true
-    
+
+
+
+    if (activeTab === 'series') {
+
+      const matchesSeries = selectedSeries !== 'All' ? t.topic === selectedSeries : true
+
+      return matchesSearch && matchesSeries
+
+    }
+
+
+
+    const matchesTopic = selectedTopic !== 'All' ? t.topic === selectedTopic : true
+
+    const matchesSpeaker = contributorMatches(t.reciter, selectedSpeaker)
+
     return matchesSearch && matchesTopic && matchesSpeaker
+
   })
 
-  const selectedTopicLabel = TALKS_TOPICS.find(t => t.id === selectedTopic)
+  const sortedFiltered = useMemo(() => sortTracks(filtered, sort), [filtered, sort])
+
+  const totalViews = allTracks.reduce((sum, t) => sum + (t.views || 0), 0)
+
+
+
+  const listTitle = (() => {
+
+    if (activeTab === 'series') {
+
+      if (selectedSeries === 'All') return 'All Series'
+
+      const series = SERIES_CATEGORIES.find((s) => s.id === selectedSeries)
+
+      return series ? `${series.emoji} ${series.label}` : selectedSeries
+
+    }
+
+    if (selectedSpeaker !== 'All') return selectedSpeaker
+
+    if (selectedTopic !== 'All') {
+
+      const topic = TALKS_TOPICS.find((t) => t.id === selectedTopic)
+
+      return topic ? `${topic.emoji} ${topic.label}` : selectedTopic
+
+    }
+
+    return 'All Talks'
+
+  })()
+
+
+
+  const topicOptionLabel = (id: string) => {
+
+    if (id === 'All') return 'All Topics'
+
+    const topic = TALKS_TOPICS.find((t) => t.id === id)
+
+    return topic ? `${topic.emoji} ${topic.label}` : id
+
+  }
+
+
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10">
-      <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-sky-100 flex items-center justify-center shadow-sm">
-            <Mic2 size={22} className="text-sky-600" />
-          </div>
+
+    <div className="max-w-4xl mx-auto px-3 sm:px-4 py-6 sm:py-10">
+
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-sky-600 via-cyan-600 to-blue-600 p-6 sm:p-8 mb-6 sm:mb-8 text-white shadow-xl">
+
+        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_20%_20%,white,transparent_40%),radial-gradient(circle_at_80%_0%,white,transparent_35%)]" />
+
+        <div className="relative flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Islamic Talks</h1>
-            <p className="text-slate-500 text-sm mt-0.5">{allTracks.length} talk{allTracks.length !== 1 ? 's' : ''}</p>
+
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold backdrop-blur-sm mb-3">
+
+              <Sparkles size={14} /> Islamic Talks
+
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Talks</h1>
+
+            <p className="mt-2 text-sm text-sky-100 max-w-md">
+
+              Browse by speaker or topic, listen instantly, and explore lecture series.
+
+            </p>
+
+            <p className="mt-3 text-xs sm:text-sm text-sky-200 flex flex-wrap items-center gap-x-3 gap-y-1">
+
+              <span>{allTracks.length} talk{allTracks.length !== 1 ? 's' : ''}</span>
+
+              <span className="inline-flex items-center gap-1">
+
+                <Eye size={12} />
+
+                {formatViews(totalViews)} plays
+
+              </span>
+
+            </p>
+
           </div>
-        </div>
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search talks..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="bg-white border border-slate-200 text-slate-800 placeholder-slate-400 pl-9 pr-4 py-2 rounded-xl text-sm focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 w-56 shadow-sm"
-          />
-        </div>
-      </div>
 
-      {/* Filters Row */}
-      <div className="flex flex-wrap items-center gap-4 mb-8">
-        
-        {/* Topic Dropdown */}
-        <div className="relative">
+          <div className="relative w-full sm:w-72">
+
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-sky-400" />
+
+            <input
+
+              type="text"
+
+              placeholder="Search title or speaker…"
+
+              value={search}
+
+              onChange={(e) => setSearch(e.target.value)}
+
+              className="w-full rounded-2xl border-0 bg-white/95 text-slate-800 placeholder-slate-400 pl-9 pr-4 py-2.5 text-sm shadow-lg focus:outline-none focus:ring-2 focus:ring-white/50"
+
+            />
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+
+      <ContributorUploadNotice variant="talks" className="mb-4 sm:mb-6" />
+
+      <CategoryUploadPanel category="talks" className="mb-4 sm:mb-6" />
+
+
+
+      <section className="mb-5 sm:mb-6">
+
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Browse</p>
+
+        <div className="flex flex-wrap gap-2">
+
           <button
-            onClick={() => {
-              setShowTopicDropdown(!showTopicDropdown)
-              setShowSpeakerDropdown(false)
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:border-sky-300 hover:bg-sky-50 transition-all min-w-[160px]"
+
+            type="button"
+
+            onClick={() => setActiveTab('all')}
+
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+
+              activeTab === 'all'
+
+                ? 'bg-sky-600 text-white shadow-md shadow-sky-200'
+
+                : 'bg-[var(--theme-surface-2)] border border-[var(--theme-border)] text-[var(--theme-muted)] hover:bg-sky-50 hover:border-sky-200'
+
+            }`}
+
           >
-            <span>{selectedTopic === 'all' ? '📋 All Topics' : `${selectedTopicLabel?.emoji} ${selectedTopicLabel?.label}`}</span>
-            <ChevronDown size={16} className={`ml-auto transition-transform ${showTopicDropdown ? 'rotate-180' : ''}`} />
+
+            All Talks
+
           </button>
-          
-          {showTopicDropdown && (
-            <div className="absolute top-full left-0 mt-2 w-72 bg-white border border-slate-200 rounded-xl shadow-xl z-20 max-h-80 overflow-y-auto">
-              <div className="p-2">
-                <button
-                  onClick={() => { setSelectedTopic('all'); setShowTopicDropdown(false) }}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                    selectedTopic === 'all' ? 'bg-sky-100 text-sky-700' : 'hover:bg-slate-50 text-slate-700'
-                  }`}
-                >
-                  <span>📋</span>
-                  <span className="flex-1 text-left">All Topics</span>
-                </button>
-                
-                {TALKS_TOPICS.map((topic) => {
-                  const count = allTracks.filter((t) => t.topic === topic.id).length
+
+          <button
+
+            type="button"
+
+            onClick={() => setActiveTab('series')}
+
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+
+              activeTab === 'series'
+
+                ? 'bg-sky-600 text-white shadow-md shadow-sky-200'
+
+                : 'bg-[var(--theme-surface-2)] border border-[var(--theme-border)] text-[var(--theme-muted)] hover:bg-sky-50 hover:border-sky-200'
+
+            }`}
+
+          >
+
+            Series
+
+          </button>
+
+          <Link
+            to="/favorites?category=talks"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-[var(--theme-surface-2)] border border-[var(--theme-border)] text-[var(--theme-muted)] hover:bg-rose-50 hover:border-rose-200 hover:text-rose-700 transition-all"
+          >
+            <Heart size={15} className="text-rose-500" />
+            Favorites
+            {talksFavoriteCount > 0 && (
+              <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">
+                {talksFavoriteCount}
+              </span>
+            )}
+          </Link>
+
+        </div>
+
+      </section>
+
+
+
+      {activeTab === 'all' ? (
+
+        <section className="mb-5 sm:mb-6 grid gap-4 sm:grid-cols-2">
+
+          <div>
+
+            <label htmlFor="talk-topic" className="text-xs font-semibold text-[var(--theme-muted)] uppercase tracking-wider mb-2 block">
+
+              Topic
+
+            </label>
+
+            <div className="relative">
+
+              <select
+
+                id="talk-topic"
+
+                value={selectedTopic}
+
+                onChange={(e) => {
+
+                  setSelectedTopic(e.target.value)
+
+                  setSelectedSpeaker('All')
+
+                }}
+
+                className="w-full appearance-none rounded-xl border border-[var(--theme-border)] bg-[var(--theme-surface-2)] pl-4 pr-10 py-2.5 text-sm font-semibold text-[var(--theme-ink)] shadow-sm focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+
+              >
+
+                {topicOptions.map((topicId) => {
+
+                  const count =
+
+                    topicId === 'All'
+
+                      ? allTracks.length
+
+                      : allTracks.filter((t) => t.topic === topicId).length
+
                   return (
-                    <button
-                      key={topic.id}
-                      onClick={() => { setSelectedTopic(topic.id); setShowTopicDropdown(false) }}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                        selectedTopic === topic.id ? 'bg-sky-100 text-sky-700' : 'hover:bg-slate-50 text-slate-700'
-                      }`}
-                    >
-                      <span>{topic.emoji}</span>
-                      <span className="flex-1 text-left truncate">{topic.label}</span>
-                      {count > 0 && (
-                        <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{count}</span>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
 
-        {/* Speaker Dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => {
-              setShowSpeakerDropdown(!showSpeakerDropdown)
-              setShowTopicDropdown(false)
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:border-sky-300 hover:bg-sky-50 transition-all min-w-[180px]"
-          >
-            <span>🎙️ {selectedSpeaker === 'all' ? 'All Speakers' : selectedSpeaker}</span>
-            <ChevronDown size={16} className={`ml-auto transition-transform ${showSpeakerDropdown ? 'rotate-180' : ''}`} />
-          </button>
-          
-          {showSpeakerDropdown && (
-            <div className="absolute top-full left-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-20 max-h-80 overflow-y-auto">
-              <div className="p-2">
-                <button
-                  onClick={() => { setSelectedSpeaker('all'); setShowSpeakerDropdown(false) }}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                    selectedSpeaker === 'all' ? 'bg-sky-100 text-sky-700' : 'hover:bg-slate-50 text-slate-700'
-                  }`}
-                >
-                  <span>🎙️</span>
-                  <span className="flex-1 text-left">All Speakers</span>
-                </button>
-                
-                {allSpeakers.map((speaker) => {
-                  const count = allTracks.filter((t) => t.reciter === speaker).length
+                    <option key={topicId} value={topicId}>
+
+                      {topicOptionLabel(topicId)}
+
+                      {count > 0 ? ` (${count})` : ''}
+
+                    </option>
+
+                  )
+
+                })}
+
+              </select>
+
+              <ChevronDown size={18} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--theme-muted)]" />
+
+            </div>
+
+          </div>
+
+          <div>
+
+            <label htmlFor="talk-speaker" className="text-xs font-semibold text-[var(--theme-muted)] uppercase tracking-wider mb-2 block">
+
+              Speaker
+
+            </label>
+
+            <div className="relative">
+
+              <select
+
+                id="talk-speaker"
+
+                value={selectedSpeaker}
+
+                onChange={(e) => {
+
+                  setSelectedSpeaker(e.target.value)
+
+                  setSelectedTopic('All')
+
+                }}
+
+                className="w-full appearance-none rounded-xl border border-[var(--theme-border)] bg-[var(--theme-surface-2)] pl-4 pr-10 py-2.5 text-sm font-semibold text-[var(--theme-ink)] shadow-sm focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+
+              >
+
+                {speakerOptions.map((speaker) => {
+
+                  const count = countTracksForContributor(allTracks, speaker)
+
                   return (
-                    <button
-                      key={speaker}
-                      onClick={() => { setSelectedSpeaker(speaker); setShowSpeakerDropdown(false) }}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                        selectedSpeaker === speaker ? 'bg-sky-100 text-sky-700' : 'hover:bg-slate-50 text-slate-700'
-                      }`}
-                    >
-                      <span>👤</span>
-                      <span className="flex-1 text-left truncate">{speaker}</span>
-                      {count > 0 && (
-                        <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{count}</span>
-                      )}
-                    </button>
+
+                    <option key={speaker} value={speaker}>
+
+                      {speaker}
+
+                      {count > 0 ? ` (${count})` : ''}
+
+                    </option>
+
                   )
+
                 })}
-              </div>
+
+              </select>
+
+              <ChevronDown size={18} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--theme-muted)]" />
+
             </div>
-          )}
-        </div>
+            <SpeakerProfileLink name={selectedSpeaker} className="mt-2" />
 
-        {/* Clear filters */}
-        {(selectedTopic !== 'all' || selectedSpeaker !== 'all') && (
-          <button
-            onClick={() => { setSelectedTopic('all'); setSelectedSpeaker('all') }}
-            className="text-sm text-slate-500 hover:text-sky-600 underline"
-          >
-            Clear filters
-          </button>
-        )}
-      </div>
+          </div>
 
-      {/* Active filters display */}
-      {(selectedTopic !== 'all' || selectedSpeaker !== 'all') && (
-        <div className="flex flex-wrap gap-2 mb-6">
-          {selectedTopic !== 'all' && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-100 text-sky-700 rounded-full text-sm">
-              <span>{selectedTopicLabel?.emoji}</span>
-              <span>{selectedTopicLabel?.label}</span>
-              <button onClick={() => setSelectedTopic('all')} className="hover:text-sky-900">×</button>
-            </span>
+        </section>
+
+      ) : (
+
+        <section className="mb-5 sm:mb-6">
+
+          <label htmlFor="talk-series" className="text-xs font-semibold text-[var(--theme-muted)] uppercase tracking-wider mb-2 block">
+
+            Series
+
+          </label>
+
+          <div className="relative max-w-md">
+
+            <select
+
+              id="talk-series"
+
+              value={selectedSeries}
+
+              onChange={(e) => setSelectedSeries(e.target.value)}
+
+              className="w-full appearance-none rounded-xl border border-[var(--theme-border)] bg-[var(--theme-surface-2)] pl-4 pr-10 py-2.5 text-sm font-semibold text-[var(--theme-ink)] shadow-sm focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+
+            >
+
+              <option value="All">All Series ({allTracks.length})</option>
+
+              {SERIES_CATEGORIES.map((series) => {
+
+                const count = allTracks.filter((t) => t.topic === series.id).length
+
+                return (
+
+                  <option key={series.id} value={series.id}>
+
+                    {series.emoji} {series.label}
+
+                    {count > 0 ? ` (${count})` : ''}
+
+                  </option>
+
+                )
+
+              })}
+
+            </select>
+
+            <ChevronDown size={18} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--theme-muted)]" />
+
+          </div>
+
+          {selectedSeries !== 'All' && (
+
+            <p className="mt-2 text-xs text-[var(--theme-muted)]">
+
+              {SERIES_CATEGORIES.find((s) => s.id === selectedSeries)?.description}
+
+            </p>
+
           )}
-          {selectedSpeaker !== 'all' && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-100 text-sky-700 rounded-full text-sm">
-              <span>🎙️</span>
-              <span>{selectedSpeaker}</span>
-              <button onClick={() => setSelectedSpeaker('all')} className="hover:text-sky-900">×</button>
-            </span>
-          )}
-        </div>
+
+        </section>
+
       )}
 
-      <TrackList 
-        tracks={filtered} 
-        emptyMessage={selectedTopic !== 'all' || selectedSpeaker !== 'all'
-          ? "No talks found for the selected filters."
-          : "No talks uploaded yet."
-        } 
-      />
+
+
+      <section>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3 px-0.5">
+
+          <h2 className="text-sm font-bold text-[var(--theme-ink)]">{listTitle}</h2>
+
+          <div className="flex items-center gap-2">
+            <PlayAllButton tracks={sortedFiltered} allowSponsoredBreaks defaultSponsoredBreakFrequency={2} />
+            <span className="text-xs text-[var(--theme-muted)]">{sortedFiltered.length} shown</span>
+          </div>
+
+        </div>
+
+        <SortFilterBar sort={sort} onSortChange={setSort} count={sortedFiltered.length} label="talks" />
+
+        <div className="mt-3">
+
+
+
+        {sortedFiltered.length > 0 ? (
+
+          <div className="flex flex-col gap-2 sm:gap-3">
+
+            {sortedFiltered.map((track, index) => (
+
+              <TalkTrackRow key={track.id} track={track} tracks={sortedFiltered} index={index} />
+
+            ))}
+
+          </div>
+
+        ) : (
+
+          loading && allTracks.length === 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-1">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="h-28 rounded-3xl skeleton" />
+              ))}
+            </div>
+          ) : (
+
+          <div className="rounded-2xl border border-dashed border-[var(--theme-border)] bg-[var(--theme-soft)]/50 px-6 py-14 text-center">
+
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--theme-surface-2)] shadow-sm">
+
+              <Mic2 size={26} className="text-[var(--theme-muted)]" />
+
+            </div>
+
+            <p className="text-sm font-medium text-[var(--theme-ink)]">
+
+              {search
+
+                ? 'No talks match your search.'
+
+                : activeTab === 'series' && selectedSeries !== 'All'
+
+                  ? 'No talks in this series yet.'
+
+                  : selectedSpeaker !== 'All' || selectedTopic !== 'All'
+
+                    ? 'No talks for the selected filters.'
+
+                    : 'No talks uploaded yet.'}
+
+            </p>
+
+          </div>
+
+          )
+
+        )}
+
+        </div>
+
+      </section>
+
     </div>
+
   )
+
 }
+
+

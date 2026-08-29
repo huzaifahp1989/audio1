@@ -1,18 +1,42 @@
-import React, { useState, useEffect } from 'react'
-import { Scroll, Search, ChevronDown, FileText, X } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { Scroll, Search, ChevronDown, FileText, X, Eye } from 'lucide-react'
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
 import TrackList from '../components/TrackList'
+import CategoryUploadPanel from '../components/CategoryUploadPanel'
 import { HADITH_NARRATORS } from '../constants/categories'
 import type { AudioTrack } from '../types'
+import { formatViews } from '../lib/views'
+
+function isHadithTrack(track: AudioTrack): boolean {
+  if (track.category === 'hadith') return true
+  if (track.category !== 'talks') return false
+  return track.topic === 'hadith' || track.topic === 'hadith-series'
+}
 
 export default function HadithPage() {
-  const { tracks, refresh } = useAudioLibrary()
-  useEffect(() => { refresh() }, [])
-  const allTracks = tracks.filter((t) => t.category === 'hadith')
+  const { tracks, loading } = useAudioLibrary()
+  const allTracks = tracks.filter(isHadithTrack)
   const [search, setSearch] = useState('')
   const [selectedNarrator, setSelectedNarrator] = useState<string>('all')
   const [showNarratorDropdown, setShowNarratorDropdown] = useState(false)
   const [selectedTrack, setSelectedTrack] = useState<AudioTrack | null>(null)
+
+  useEffect(() => {
+    if (!selectedTrack) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSelectedTrack(null)
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = previousOverflow
+    }
+  }, [selectedTrack])
 
   // Get unique narrators from tracks + predefined list
   const trackNarrators = [...new Set(allTracks.map((t) => t.reciter))]
@@ -32,6 +56,9 @@ export default function HadithPage() {
     return matchesSearch && matchesNarrator
   })
 
+  // Calculate total views
+  const totalViews = allTracks.reduce((sum, t) => sum + (t.views || 0), 0)
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
       <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
@@ -41,7 +68,13 @@ export default function HadithPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-800">Hadith Collection</h1>
-            <p className="text-slate-500 text-sm mt-0.5">{allTracks.length} hadith{allTracks.length !== 1 ? 's' : ''}</p>
+            <p className="text-slate-500 text-sm mt-0.5">
+              {allTracks.length} hadith{allTracks.length !== 1 ? 's' : ''} · {' '}
+              <span className="inline-flex items-center gap-1">
+                <Eye size={12} />
+                {formatViews(totalViews)}
+              </span>
+            </p>
           </div>
         </div>
         <div className="relative">
@@ -55,6 +88,8 @@ export default function HadithPage() {
           />
         </div>
       </div>
+
+      <CategoryUploadPanel category="hadith" className="mb-8" />
 
       {/* Filters Row */}
       <div className="flex flex-wrap items-center gap-4 mb-8">
@@ -128,15 +163,24 @@ export default function HadithPage() {
 
       {/* Text Content Modal */}
       {selectedTrack && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[80vh] flex flex-col">
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedTrack(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="hadith-modal-title"
+            className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[80vh] flex flex-col"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
                   <FileText size={20} className="text-emerald-600" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-800">{selectedTrack.title}</h3>
+                  <h3 id="hadith-modal-title" className="font-bold text-slate-800">{selectedTrack.title}</h3>
                   <p className="text-sm text-slate-500">{narratorLabel(selectedTrack.reciter)}</p>
                 </div>
               </div>
@@ -170,57 +214,15 @@ export default function HadithPage() {
         </div>
       )}
 
-      {/* Track List with Text Button */}
-      {filtered.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4">
-          {filtered.map((track) => (
-            <div key={track.id} className="group bg-white border border-slate-200 rounded-xl hover:border-emerald-200 hover:shadow-sm transition-all overflow-hidden">
-              <div className="p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
-                        <Scroll size={18} className="text-emerald-600" />
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="font-semibold text-slate-800 truncate">{track.title}</h3>
-                        <p className="text-sm text-slate-500">{narratorLabel(track.reciter)}</p>
-                      </div>
-                    </div>
-                    
-                    {track.text && (
-                      <p className="text-sm text-slate-600 line-clamp-2 mb-3 pl-[52px]">
-                        {track.text.substring(0, 150)}...
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div className="flex flex-col gap-2 shrink-0">
-                    {track.text && (
-                      <button
-                        onClick={() => setSelectedTrack(track)}
-                        className="flex items-center gap-2 px-4 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg text-sm font-medium transition-colors"
-                      >
-                        <FileText size={16} />
-                        Read Hadith
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-16 border border-dashed border-slate-300 rounded-xl bg-slate-50">
-          <Scroll size={48} className="mx-auto mb-4 text-slate-300" />
-          <p className="text-slate-500">
-            {selectedNarrator !== 'all' || search
-              ? "No hadith found for the selected filters."
-              : "No hadith uploaded yet."}
-          </p>
-        </div>
-      )}
+      <TrackList
+        tracks={filtered}
+        loading={loading && allTracks.length === 0}
+        emptyMessage={
+          selectedNarrator !== 'all' || search
+            ? 'No hadith found for the selected filters.'
+            : 'No hadith uploaded yet.'
+        }
+      />
     </div>
   )
 }

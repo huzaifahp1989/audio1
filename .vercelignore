@@ -1,0 +1,15 @@
+node_modules
+build
+dist
+.vercel/output
+.vercel/node
+.git
+.trae
+.log
+.figma
+tmp
+tmp/
+public/audio
+*.wav
+*.mp3
+*.m4a

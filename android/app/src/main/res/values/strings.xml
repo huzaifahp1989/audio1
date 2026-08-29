@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Islam Media Central</string>
+    <string name="title_activity_main">Islam Media Central</string>
+    <string name="package_name">com.islammediacentral.app</string>
+    <string name="custom_url_scheme">com.islammediacentral.app</string>
+</resources>

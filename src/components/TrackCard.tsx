@@ -1,8 +1,11 @@
 import React from 'react'
-import { Play, Pause, Music, SkipBack, SkipForward, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Play, Pause, Eye, List } from 'lucide-react'
 import type { AudioTrack } from '../types'
 import { useAudioPlayer } from '../context/AudioPlayerContext'
-import { formatDuration, formatFileSize } from '../lib/storage'
+import { formatDuration, formatUploadDate } from '../lib/storage'
+import { formatViews } from '../lib/views'
+import ShareButton from './ShareButton'
+import InlinePlayerPanel from './InlinePlayerPanel'
 
 interface TrackCardProps {
   track: AudioTrack
@@ -11,160 +14,157 @@ interface TrackCardProps {
 }
 
 export default function TrackCard({ track, tracks, index }: TrackCardProps) {
-  const { currentTrack, isPlaying, currentTime, duration, playFromList, togglePlay, seek } = useAudioPlayer()
+  const { currentTrack, isPlaying, playFromList, togglePlay, addTrackToPlaylist, playlist } = useAudioPlayer()
   const isActive = currentTrack?.id === track.id
+  const displayTrack = isActive && currentTrack ? currentTrack : track
+  const isAddedToPlaylist = playlist.some((item) => item.id === track.id)
 
-  const canPrev = index > 0
-  const canNext = index < tracks.length - 1
-  const progress = duration ? (currentTime / duration) * 100 : 0
-
-  const handlePrev = (e: React.MouseEvent) => {
+  const handlePlayPause = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (canPrev) {
-      playFromList(tracks[index - 1], tracks, index - 1)
-    }
-  }
-
-  const handleNext = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (canNext) {
-      playFromList(tracks[index + 1], tracks, index + 1)
-    }
-  }
-
-  const skipBack = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    seek(Math.max(0, currentTime - 10))
-  }
-
-  const skipFwd = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    seek(Math.min(duration, currentTime + 10))
+    if (isActive) togglePlay()
+    else playFromList(track, tracks, index)
   }
 
   return (
     <div
-      className={`group relative bg-white border rounded-xl overflow-hidden hover:shadow-md transition-all duration-200 cursor-pointer ${
-        isActive ? 'border-violet-400 shadow-md ring-1 ring-violet-300' : 'border-slate-200 hover:border-violet-200'
+      className={`group relative overflow-hidden rounded-3xl border transition-all duration-300 ${
+        isActive
+          ? 'border-emerald-300/90 dark:border-emerald-500/40 bg-[var(--theme-surface-2)] shadow-xl shadow-emerald-500/10 ring-1 ring-emerald-200/80 dark:ring-emerald-500/25'
+          : 'border-[var(--theme-border)] bg-[var(--theme-surface-2)] shadow-sm hover:-translate-y-0.5 hover:shadow-md'
       }`}
       onClick={() => playFromList(track, tracks, index)}
     >
-      <div className="p-4">
-        <div className="flex items-start gap-3">
-          {/* Artwork */}
-          <div
-            className={`relative w-14 h-14 rounded-lg flex items-center justify-center shrink-0 ${
-              isActive ? 'bg-violet-600' : 'bg-violet-50 group-hover:bg-violet-100'
-            } transition-colors`}
-          >
-            <Music size={22} className={isActive ? 'text-white' : 'text-violet-400'} />
-            <div
-              className={`absolute inset-0 flex items-center justify-center rounded-lg bg-violet-900/30 transition-opacity ${
-                isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+      {isActive && (
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-500" aria-hidden />
+      )}
+
+      <div className="p-3.5 sm:p-5">
+        <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 sm:block sm:w-auto">
+            <button
+              type="button"
+              onClick={handlePlayPause}
+              className={`relative flex h-12 w-12 sm:h-16 sm:w-16 shrink-0 items-center justify-center rounded-2xl transition-all active:scale-95 ${
+                isActive
+                  ? 'bg-gradient-to-br from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/30'
+                  : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20'
               }`}
+              aria-label={isActive && isPlaying ? 'Pause track' : 'Play track'}
             >
               {isActive && isPlaying ? (
-                <Pause size={20} className="text-white" />
+                <>
+                  <span className="absolute inset-0 rounded-2xl player-disc-ring" aria-hidden />
+                  <Pause size={20} className="sm:size-6" />
+                </>
               ) : (
-                <Play size={20} className="text-white ml-0.5" />
+                <Play size={20} className="sm:size-6 ml-0.5" />
+              )}
+            </button>
+
+            <div className="sm:hidden min-w-0">
+              <p className="text-[10px] leading-tight text-[var(--theme-muted)] truncate">{displayTrack.reciter}</p>
+              {!isActive && (
+                <div className="mt-2 flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); addTrackToPlaylist(track) }}
+                    className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[10px] font-semibold transition ${
+                      isAddedToPlaylist
+                        ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                        : 'border-[var(--theme-border)] bg-[var(--theme-surface-2)] text-[var(--theme-muted)] hover:border-emerald-300 hover:text-emerald-700'
+                    }`}
+                  >
+                    <List size={12} />
+                    {isAddedToPlaylist ? 'Added' : 'Playlist'}
+                  </button>
+                  <ShareButton track={track} className="h-8 w-8 !p-1.5" />
+                </div>
+              )}
+              {isActive && (
+                <div className="mt-2 flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); addTrackToPlaylist(track) }}
+                    className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[10px] font-semibold transition ${
+                      isAddedToPlaylist
+                        ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                        : 'border-[var(--theme-border)] bg-[var(--theme-surface-2)] text-[var(--theme-muted)]'
+                    }`}
+                  >
+                    <List size={12} />
+                    {isAddedToPlaylist ? 'In playlist' : 'Playlist'}
+                  </button>
+                  <ShareButton track={track} className="h-8 w-8 !p-1.5" />
+                </div>
               )}
             </div>
           </div>
 
-          {/* Info */}
-          <div className="min-w-0 flex-1">
-            <h3
-              className={`font-semibold text-sm leading-tight truncate ${
-                isActive ? 'text-violet-700' : 'text-slate-800'
-              }`}
-            >
-              {track.title}
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5 truncate">{track.reciter}</p>
-            <div className="flex items-center gap-2 mt-2">
-              {track.duration !== undefined && (
-                <span className="text-xs text-slate-400 tabular-nums">{formatDuration(track.duration)}</span>
+          <div className="min-w-0 flex-1 w-full">
+            <div className="flex flex-col-reverse items-start gap-1">
+              {isActive && (
+                <span className="shrink-0 self-start rounded-full bg-emerald-100 dark:bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                  Playing
+                </span>
               )}
-              <span className="text-xs text-slate-300">{formatFileSize(track.fileSize)}</span>
+              <h3 className={`w-full text-[13px] leading-snug sm:text-sm font-semibold break-words whitespace-normal hyphens-auto ${isActive ? 'text-emerald-800 dark:text-emerald-200' : 'text-[var(--theme-ink)]'}`}>
+                {displayTrack.title}
+              </h3>
+            </div>
+            <p className="hidden sm:block text-[11px] leading-tight sm:text-xs text-[var(--theme-muted)] mt-1 break-words whitespace-normal">{displayTrack.reciter}</p>
+            <div className="mt-2.5 sm:mt-3 flex flex-wrap gap-1.5 text-[10px] sm:text-[11px] text-[var(--theme-muted)]">
+              {displayTrack.duration !== undefined && (
+                <span className="rounded-full bg-[var(--theme-soft)] px-2 py-1 sm:px-2.5 sm:py-1 tabular-nums">{formatDuration(displayTrack.duration)}</span>
+              )}
+              <span className="rounded-full bg-[var(--theme-soft)] px-2 py-1 sm:px-2.5 sm:py-1 flex items-center gap-1">
+                <Eye size={10} />
+                {formatViews(displayTrack.views)}
+              </span>
+              <span className="rounded-full bg-[var(--theme-soft)] px-2 py-1 sm:px-2.5 sm:py-1">{formatUploadDate(displayTrack.uploadedAt)}</span>
+            </div>
+            <div className="hidden sm:block">
+              {!isActive && (
+                <div className="mt-4 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); addTrackToPlaylist(track) }}
+                    className={`inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-semibold transition ${
+                      isAddedToPlaylist
+                        ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                        : 'border-[var(--theme-border)] bg-[var(--theme-surface-2)] text-[var(--theme-muted)] hover:border-emerald-300 hover:text-emerald-700'
+                    }`}
+                  >
+                    <List size={14} />
+                    {isAddedToPlaylist ? 'Added' : 'Add to playlist'}
+                  </button>
+                  <ShareButton track={track} className="h-9 w-9" />
+                </div>
+              )}
             </div>
           </div>
         </div>
+
+        {isActive && (
+          <div className="mt-4 space-y-3">
+            <InlinePlayerPanel variant="emerald" tracks={tracks} index={index} />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); addTrackToPlaylist(track) }}
+                className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
+                  isAddedToPlaylist
+                    ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                    : 'border-[var(--theme-border)] bg-[var(--theme-surface-2)] text-[var(--theme-muted)]'
+                }`}
+              >
+                <List size={14} />
+                {isAddedToPlaylist ? 'In playlist' : 'Add to playlist'}
+              </button>
+              <ShareButton track={track} className="h-9 w-9" />
+            </div>
+          </div>
+        )}
       </div>
-
-      {/* Inline mini-player - shown when active */}
-      {isActive && (
-        <div className="px-4 pb-3 pt-1 border-t border-violet-100 bg-violet-50/50" onClick={(e) => e.stopPropagation()}>
-          {/* Seek bar */}
-          <div className="mb-2">
-            <div className="relative h-1.5 bg-slate-200 rounded-full overflow-hidden">
-              <div
-                className="absolute left-0 top-0 h-full bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full transition-all"
-                style={{ width: `${progress}%` }}
-              />
-              <input
-                type="range"
-                min={0}
-                max={duration || 0}
-                step={0.1}
-                value={currentTime}
-                onChange={(e) => { e.stopPropagation(); seek(Number(e.target.value)) }}
-                className="absolute inset-0 w-full opacity-0 cursor-pointer"
-                style={{ height: '100%' }}
-              />
-            </div>
-            <div className="flex justify-between mt-1">
-              <span className="text-xs text-slate-400 tabular-nums">{formatDuration(currentTime)}</span>
-              <span className="text-xs text-slate-400 tabular-nums">{formatDuration(duration)}</span>
-            </div>
-          </div>
-
-          {/* Controls with skip buttons */}
-          <div className="flex items-center justify-center gap-1">
-            <button
-              onClick={handlePrev}
-              disabled={!canPrev}
-              className="p-1.5 text-slate-500 hover:text-violet-600 disabled:text-slate-300 disabled:cursor-not-allowed transition-colors"
-              title="Previous track"
-            >
-              <SkipBack size={16} />
-            </button>
-            <button
-              onClick={skipBack}
-              className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
-              title="-10s"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); togglePlay() }}
-              className="w-9 h-9 rounded-full bg-violet-600 hover:bg-violet-700 flex items-center justify-center shadow transition-all active:scale-95 mx-1"
-            >
-              {isPlaying
-                ? <Pause size={16} className="text-white" />
-                : <Play size={16} className="text-white ml-0.5" />}
-            </button>
-            <button
-              onClick={skipFwd}
-              className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
-              title="+10s"
-            >
-              <ChevronRight size={18} />
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={!canNext}
-              className="p-1.5 text-slate-500 hover:text-violet-600 disabled:text-slate-300 disabled:cursor-not-allowed transition-colors"
-              title="Next track"
-            >
-              <SkipForward size={16} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {isActive && (
-        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500 to-indigo-500" />
-      )}
     </div>
   )
 }

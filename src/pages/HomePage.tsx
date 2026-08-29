@@ -1,7 +1,11 @@
 import React, { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+<<<<<<< HEAD
 import { BookOpen, Music2, Mic2, ArrowRight, BookText, Scroll, Hand, GraduationCap, Heart, Flame, History, Clock, Search, Sparkles, Wand2, ClipboardList, Check } from 'lucide-react'
 import type { AudioTrack } from '../types'
+=======
+import { BookOpen, Music2, Mic2, Star, ArrowRight, BookText, Scroll, Hand, Car } from 'lucide-react'
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
 import { useGlobalSearch } from '../context/GlobalSearchContext'
 import TrackCard from '../components/TrackCard'
@@ -91,6 +95,7 @@ const HERO_CATEGORIES = [
   },
   {
     to: '/kids-recordings',
+<<<<<<< HEAD
     label: 'Kids Recordings',
     desc: "Kids' approved recordings",
     icon: GraduationCap,
@@ -98,6 +103,15 @@ const HERO_CATEGORIES = [
     bg: 'bg-amber-50 dark:bg-amber-500/10',
     border: 'border-amber-200 dark:border-amber-500/20',
     text: 'text-amber-700 dark:text-amber-300',
+=======
+    label: 'Kids',
+    desc: 'Fun educational audio for children',
+    icon: Star,
+    gradient: 'from-pink-400 to-rose-500',
+    bg: 'bg-pink-50',
+    border: 'border-pink-200',
+    text: 'text-pink-700',
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
   },
 ]
 
@@ -204,6 +218,7 @@ export default function HomePage() {
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link
               to="/quran"
+<<<<<<< HEAD
               className="inline-flex items-center gap-2 bg-white text-blue-700 hover:bg-sky-50 transition-colors font-semibold px-6 py-3 rounded-xl shadow-md"
             >
               Start Listening <ArrowRight size={18} />
@@ -214,6 +229,18 @@ export default function HomePage() {
             >
               <Search size={18} /> Search library
             </button>
+=======
+              className="inline-flex items-center gap-2 bg-white text-violet-700 hover:bg-violet-50 transition-colors font-semibold px-6 py-3 rounded-xl shadow-md"
+            >
+              Start Listening <ArrowRight size={18} />
+            </Link>
+            <Link
+              to="/car"
+              className="inline-flex items-center gap-2 bg-white/15 border border-white/40 text-white hover:bg-white/25 transition-colors font-semibold px-6 py-3 rounded-xl"
+            >
+              <Car size={18} /> Car Mode
+            </Link>
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
           </div>
         </div>
       </div>

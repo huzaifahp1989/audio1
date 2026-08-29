@@ -44,6 +44,7 @@
   }
 
   body {
+<<<<<<< HEAD
     background-color: var(--theme-bg);
     color: var(--theme-ink);
     font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
@@ -52,6 +53,12 @@
       radial-gradient(circle at 85% 14%, var(--glow) 0%, rgba(14, 165, 233, 0) 42%);
     min-height: 100vh;
     transition: background-color 0.3s ease, color 0.3s ease;
+=======
+    background-color: #f8fafc;
+    color: #0f172a;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    overflow-x: hidden;
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
   }
 
   * {

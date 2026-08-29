@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Mic, Square, Play, Pause, Upload, RotateCcw, Scissors, SkipBack, SkipForward, Volume2, Headphones, Crop, Split, Eraser, ZoomIn, ZoomOut, Sparkles, CheckCircle, Save, FolderOpen, Trash2, Clock, ChevronRight, X, FileText, Wand2, RefreshCw } from 'lucide-react'
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
+<<<<<<< HEAD
 import { useNavigate } from 'react-router-dom'
 import {
   saveDraft,
@@ -222,6 +223,30 @@ function extractTitleFromFilename(filename: string): string {
 
 function supportsTextContent(cat: AudioCategory): boolean {
   return cat === 'audiobooks' || cat === 'hadith' || cat === 'dua'
+=======
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { saveDraft, getAllDrafts, deleteDraft, getDraft, type RecordingDraft } from '../lib/indexedDb'
+import { ALL_CATEGORIES_LIST, QURAN_RECITERS, NASHEED_ARTISTS, TALKS_SPEAKERS, TALKS_TOPICS } from '../constants/categories'
+import type { AudioCategory } from '../types'
+import { isKidsCategory } from '../types'
+import WaveSurfer from 'wavesurfer.js'
+import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions'
+import {
+  EFFECTS,
+  applyEffectToBuffer as applySharedEffect,
+  audioBufferToWav,
+  type AudioEffectType,
+} from '../lib/audioEffects'
+
+const RECORDER_USERNAME = 'recorder'
+const RECORDER_PASSWORD = 'record123'
+const RECORDER_SESSION_KEY = 'recorder_authenticated'
+const LOAD_DRAFT_KEY = 'load_draft_id'
+
+const CATEGORY_ROUTES: Record<string, string> = {
+  quran: '/quran', nasheeds: '/nasheeds', talks: '/talks',
+  'kids-stories': '/kids-recordings', 'kids-quran': '/kids-recordings', 'kids-nasheeds': '/kids-recordings',
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 }
 
 interface AudioEdit { buffer: AudioBuffer; duration: number }
@@ -236,7 +261,20 @@ function formatDate(ts: number) {
 
 export default function RecordPage() {
   const navigate = useNavigate()
+<<<<<<< HEAD
   const { user } = useAuth()
+=======
+  const [searchParams] = useSearchParams()
+  const initialCategory = ((): AudioCategory => {
+    const c = searchParams.get('category')
+    if (c && ALL_CATEGORIES_LIST.some((x) => x.value === c)) return c as AudioCategory
+    return 'talks'
+  })()
+  const [authenticated, setAuthenticated] = useState(() => sessionStorage.getItem(RECORDER_SESSION_KEY) === '1')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [authError, setAuthError] = useState('')
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
   const [activeTab, setActiveTab] = useState<'record' | 'drafts'>('record')
 
   // Recording
@@ -272,7 +310,11 @@ export default function RecordPage() {
 
   // Upload
   const [title, setTitle] = useState('')
+<<<<<<< HEAD
   const [category, setCategory] = useState<AudioCategory>(UNCATEGORIZED_CATEGORY)
+=======
+  const [category, setCategory] = useState<AudioCategory>(initialCategory)
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
   const [reciter, setReciter] = useState('')
   const [customReciter, setCustomReciter] = useState('')
   const [topic, setTopic] = useState('')
@@ -357,9 +399,22 @@ export default function RecordPage() {
   }
 
   const loadDraftList = async () => { setDrafts(await getAllDrafts()) }
+<<<<<<< HEAD
   const loadPendingUploadCount = async () => {
     const pending = await getAllPendingRecorderUploads()
     setPendingUploadCount(pending.length)
+=======
+  useEffect(() => { if (authenticated) loadDraftList() }, [authenticated])
+
+  const handleAuth = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (username === RECORDER_USERNAME && password === RECORDER_PASSWORD) {
+      sessionStorage.setItem(RECORDER_SESSION_KEY, '1')
+      setAuthenticated(true)
+      setAuthError('')
+    }
+    else setAuthError('Invalid username or password')
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
   }
 
   const syncPendingUploads = async () => {
@@ -481,93 +536,8 @@ export default function RecordPage() {
   }
 
   // ── Effects ───────────────────────────────────────────────────────────────
-  const applyEffectToBuffer = async (buffer: AudioBuffer, effect: AudioEffectType, intensity: number): Promise<AudioBuffer> => {
-    const sr = buffer.sampleRate
-    const extraSeconds = effect === 'echo' ? 3 : effect === 'reverb' ? 3 : 0
-    const offCtx = new OfflineAudioContext(
-      buffer.numberOfChannels,
-      buffer.length + Math.floor(extraSeconds * sr),
-      sr
-    )
-
-    // Helper: create source
-    const makeSrc = (buf: AudioBuffer, offset = 0) => {
-      const s = offCtx.createBufferSource()
-      s.buffer = buf
-      if (effect === 'pitchUp') s.playbackRate.value = 1 + intensity * 0.5
-      if (effect === 'pitchDown') s.playbackRate.value = Math.max(0.5, 1 - intensity * 0.4)
-      return s
-    }
-
-    if (effect === 'echo') {
-      // Dry signal
-      const dry = offCtx.createGain()
-      dry.gain.value = 1
-      const srcDry = makeSrc(buffer)
-      srcDry.connect(dry)
-      dry.connect(offCtx.destination)
-      srcDry.start(0)
-
-      // Echo taps — multiple copies at increasing delays with decreasing volume
-      const delayTime = 0.2 + intensity * 0.3  // 0.2s – 0.5s
-      const decayFactor = 0.55 + intensity * 0.15  // 0.55 – 0.7
-      const numTaps = 4
-      for (let tap = 1; tap <= numTaps; tap++) {
-        const tapGain = offCtx.createGain()
-        tapGain.gain.value = Math.pow(decayFactor, tap) * intensity
-        const tapSrc = makeSrc(buffer)
-        tapSrc.connect(tapGain)
-        tapGain.connect(offCtx.destination)
-        tapSrc.start(delayTime * tap)
-      }
-
-    } else if (effect === 'reverb') {
-      const conv = offCtx.createConvolver()
-      const irLen = Math.floor(sr * (1 + intensity * 2))
-      const ir = offCtx.createBuffer(2, irLen, sr)
-      for (let ch = 0; ch < 2; ch++) {
-        const d = ir.getChannelData(ch)
-        for (let i = 0; i < irLen; i++) {
-          d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 1.5 + (1 - intensity) * 3)
-        }
-      }
-      conv.buffer = ir
-      const wet = offCtx.createGain(); wet.gain.value = 0.6 + intensity * 0.4
-      const dry = offCtx.createGain(); dry.gain.value = 1 - intensity * 0.3
-      const src = makeSrc(buffer)
-      src.connect(conv); conv.connect(wet); wet.connect(offCtx.destination)
-      src.connect(dry); dry.connect(offCtx.destination)
-      src.start(0)
-
-    } else if (effect === 'distortion') {
-      const ws = offCtx.createWaveShaper()
-      const curve = new Float32Array(512)
-      const k = 50 + intensity * 350
-      for (let i = 0; i < 512; i++) {
-        const x = (i * 2) / 512 - 1
-        curve[i] = ((Math.PI + k) * x) / (Math.PI + k * Math.abs(x))
-      }
-      ws.curve = curve; ws.oversample = '4x'
-      const src = makeSrc(buffer)
-      src.connect(ws); ws.connect(offCtx.destination); src.start(0)
-
-    } else if (effect === 'pitchUp' || effect === 'pitchDown') {
-      const src = makeSrc(buffer)
-      src.connect(offCtx.destination); src.start(0)
-
-    } else if (effect === 'telephone') {
-      const hp = offCtx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 300 + (1 - intensity) * 500
-      const lp = offCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3400 - (1 - intensity) * 1000
-      const src = makeSrc(buffer)
-      src.connect(hp); hp.connect(lp); lp.connect(offCtx.destination); src.start(0)
-
-    } else {
-      const src = makeSrc(buffer)
-      src.connect(offCtx.destination); src.start(0)
-    }
-
-    return offCtx.startRendering()
-  }
+  const applyEffectToBuffer = (buffer: AudioBuffer, effect: AudioEffectType, intensity: number) =>
+    applySharedEffect(buffer, effect, intensity)
 
   const handleApplyEffect = async () => {
     if (!currentEdit || activeEffect === 'none') return
@@ -759,24 +729,6 @@ export default function RecordPage() {
     rp.on('region-removed', () => { setSelectedRegion(null); setHasRegion(false) })
   }
 
-  const audioBufferToWav = (buffer: AudioBuffer): Blob => {
-    const len = buffer.length * buffer.numberOfChannels * 2 + 44
-    const ab = new ArrayBuffer(len); const view = new DataView(ab)
-    const channels: Float32Array[] = []; for (let i = 0; i < buffer.numberOfChannels; i++) channels.push(buffer.getChannelData(i))
-    const ws = (o: number, s: string) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)) }
-    ws(0, 'RIFF'); view.setUint32(4, 36 + buffer.length * buffer.numberOfChannels * 2, true)
-    ws(8, 'WAVE'); ws(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true)
-    view.setUint16(22, buffer.numberOfChannels, true); view.setUint32(24, buffer.sampleRate, true)
-    view.setUint32(28, buffer.sampleRate * buffer.numberOfChannels * 2, true)
-    view.setUint16(32, buffer.numberOfChannels * 2, true); view.setUint16(34, 16, true)
-    ws(36, 'data'); view.setUint32(40, buffer.length * buffer.numberOfChannels * 2, true)
-    let offset = 44
-    for (let i = 0; i < buffer.length; i++) for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
-      const s = Math.max(-1, Math.min(1, channels[ch][i])); view.setInt16(offset, s * 0x7FFF, true); offset += 2
-    }
-    return new Blob([ab], { type: 'audio/wav' })
-  }
-
   // ── Edit ops ──────────────────────────────────────────────────────────────
   const saveEdit = (buf: AudioBuffer) => {
     const ne: AudioEdit = { buffer: buf, duration: buf.duration }
@@ -855,6 +807,20 @@ export default function RecordPage() {
     setActiveTab('record')
   }
 
+  // Open a draft requested from Admin (same browser)
+  useEffect(() => {
+    if (!authenticated) return
+    const draftId = sessionStorage.getItem(LOAD_DRAFT_KEY)
+    if (!draftId) return
+    sessionStorage.removeItem(LOAD_DRAFT_KEY)
+    ;(async () => {
+      const draft = await getDraft(draftId)
+      if (draft) await handleLoadDraft(draft)
+      else setActiveTab('drafts')
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authenticated])
+
   const handleDeleteDraft = async (id: string) => {
     if (!confirm('Delete this draft?')) return
     await deleteDraft(id)
@@ -864,8 +830,8 @@ export default function RecordPage() {
 
   // ── Upload ────────────────────────────────────────────────────────────────
   const getReciters = (cat: AudioCategory) => {
-    if (cat === 'quran') return QURAN_RECITERS
-    if (cat === 'nasheeds') return NASHEED_ARTISTS
+    if (cat === 'quran' || cat === 'kids-quran') return QURAN_RECITERS
+    if (cat === 'nasheeds' || cat === 'kids-nasheeds') return NASHEED_ARTISTS
     if (cat === 'talks') return TALKS_SPEAKERS
     if (cat === 'audiobooks') return AUDIOBOOK_AUTHORS
     if (cat === 'hadith') return HADITH_NARRATORS
@@ -956,10 +922,37 @@ export default function RecordPage() {
       const timestamp = Date.now()
       const safeTitle = (title || 'Recording').replace(/[^a-z0-9]/gi, '_').substring(0, 30)
       const fileName = `${safeTitle}_${timestamp}.wav`
+<<<<<<< HEAD
       let file = new File([wavBlob], fileName, { type: 'audio/wav' })
 
       if (!file.type.startsWith('audio/')) {
         throw new Error('Generated file is not recognized as audio. Please record again.')
+=======
+      const file = new File([wavBlob], fileName, { type: 'audio/wav' })
+      
+      const effectiveReciter = reciter === 'Other' ? customReciter : reciter
+      
+      console.log('[Upload] Uploading:', fileName, 'to category:', category)
+      
+      const ok = await uploadTrack(file, {
+        title: title || `Recording ${new Date().toLocaleString()}`,
+        category,
+        reciter: effectiveReciter || 'Unknown Speaker',
+        topic: category === 'talks' ? topic : undefined,
+        source: 'record',
+      })
+      
+      if (ok) {
+        console.log('[Upload] Success!')
+        setUploadedCategory(category)
+        if (loadedDraftId) {
+          await deleteDraft(loadedDraftId)
+          await loadDraftList()
+        }
+        setShowUploadForm(false)
+      } else {
+        setUploadError(hookError || 'Upload failed. Please try again.')
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
       }
 
       // Optional silence trimming
@@ -1086,8 +1079,15 @@ export default function RecordPage() {
 
   // ── Upload success ────────────────────────────────────────────────────────
   if (uploadedCategory) {
+<<<<<<< HEAD
     const catLabel = formatCategoryLabel(uploadedCategory)
     const nextRoute = CATEGORY_ROUTES[uploadedCategory] || '/'
+=======
+    const catLabel = ALL_CATEGORIES_LIST.find(c => c.value === uploadedCategory)?.label || uploadedCategory
+    const dest = isKidsCategory(uploadedCategory)
+      ? `/kids-recordings?tab=recorded`
+      : (CATEGORY_ROUTES[uploadedCategory] || '/')
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-slate-200 p-8 text-center">
@@ -1099,7 +1099,13 @@ export default function RecordPage() {
               : `Your recording "${title}" has been saved to ${catLabel}.`}
           </p>
           <div className="flex flex-col gap-3">
+<<<<<<< HEAD
             <button onClick={() => navigate(nextRoute)} className="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold py-3 rounded-xl">{uploadedCategory === UNCATEGORIZED_CATEGORY ? 'Back to Home' : `Go to ${catLabel} →`}</button>
+=======
+            <button onClick={() => navigate(dest)} className="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold py-3 rounded-xl">
+              {isKidsCategory(uploadedCategory) ? 'View in Kids Recordings →' : `Go to ${catLabel} →`}
+            </button>
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
             <button onClick={resetRecording} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-3 rounded-xl">Record Another</button>
           </div>
         </div>
@@ -1481,9 +1487,9 @@ export default function RecordPage() {
                   {/* Effects */}
                   <div className="border border-violet-200 rounded-xl p-4 mb-5 bg-gradient-to-br from-violet-50 to-indigo-50">
                     <div className="flex items-center gap-2 mb-3"><Sparkles size={18} className="text-violet-600" /><h3 className="font-semibold text-slate-800 text-sm">Audio Effects</h3></div>
-                    <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 mb-3">
+                    <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2 mb-3">
                       {EFFECTS.map(fx => (
-                        <button key={fx.id} onClick={() => setActiveEffect(fx.id)} className={`flex flex-col items-center gap-1 p-2 rounded-xl border text-xs font-medium transition-all ${activeEffect === fx.id ? 'bg-violet-600 border-violet-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-700 hover:border-violet-300 hover:bg-violet-50'}`} title={fx.label}>
+                        <button key={fx.id} onClick={() => setActiveEffect(fx.id)} className={`flex flex-col items-center gap-1 p-2 rounded-xl border text-xs font-medium transition-all ${activeEffect === fx.id ? 'bg-violet-600 border-violet-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-700 hover:border-violet-300 hover:bg-violet-50'}`} title={fx.description || fx.label}>
                           <span className="text-base">{fx.emoji}</span><span className="truncate w-full text-center leading-tight">{fx.label}</span>
                         </button>
                       ))}
@@ -1567,6 +1573,7 @@ export default function RecordPage() {
                   <label className="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Title *</label>
                   <input type="text" value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-violet-400" placeholder="Enter a title" required />
                 </div>
+<<<<<<< HEAD
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Contributor name *</label>
@@ -1589,6 +1596,18 @@ export default function RecordPage() {
                       required
                     />
                   </div>
+=======
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Category *</label>
+                  <select value={category} onChange={e => { setCategory(e.target.value as AudioCategory); setReciter(''); setTopic('') }} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-sm">
+                    {ALL_CATEGORIES_LIST.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                  {isKidsCategory(category) && (
+                    <p className="text-xs text-amber-700 mt-1.5 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5">
+                      Kids category selected — after upload it will appear under Kids → Your Recordings.
+                    </p>
+                  )}
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Email address *</label>

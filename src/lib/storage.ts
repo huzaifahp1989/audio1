@@ -2,7 +2,11 @@ import type { AudioTrack, AudioCategory, AdAudioTrack, PlaylistAdTargetCategory 
 import type { KidsSubmission, UserSubmission } from '../types/kids'
 import { 
   storage, db, ref, uploadBytes, getDownloadURL, deleteObject,
+<<<<<<< HEAD
   collection, getDocs, deleteDoc, doc, query, where, orderBy, updateDoc, setDoc, increment, addDoc
+=======
+  collection, getDocs, deleteDoc, doc, query, orderBy, updateDoc, setDoc, increment 
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 } from './firebase'
 import { getAllViews } from './views'
 import { getAllVotes } from './votes'
@@ -233,8 +237,22 @@ function mapStorageError(error: unknown): Error {
 export async function uploadAudioToCloud(
   file: File, 
   id: string, 
+<<<<<<< HEAD
   metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; duration?: number; text?: string; imageFile?: File },
   options: UploadStorageOptions = {}
+=======
+  metadata: {
+    title: string
+    category: AudioCategory
+    reciter: string
+    topic?: string
+    duration?: number
+    text?: string
+    language?: string
+    source?: string
+    vocalsOnly?: boolean
+  }
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 ): Promise<{ url: string; track: AudioTrack }> {
   try {
     const filename = `audio/${id}-${file.name}`
@@ -344,7 +362,12 @@ export async function uploadAdAudioToCloud(
     mimeType: file.type,
     uploadedAt: Date.now(),
     audioUrl: downloadURL,
+<<<<<<< HEAD
     active: true,
+=======
+    views: 0,
+    source: metadata.source || 'upload',
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
   }
 
   if (metadata.duration !== undefined) adTrack.duration = metadata.duration
@@ -401,6 +424,7 @@ export async function submitUserRecordingForReview(
   if (metadata.text !== undefined && metadata.text !== '') {
     submissionData.text = metadata.text
   }
+<<<<<<< HEAD
 
   if (metadata.duration !== undefined) {
     submissionData.duration = metadata.duration
@@ -448,6 +472,21 @@ export async function incrementAdAudioHeardCount(id: string): Promise<void> {
   await updateDoc(doc(db, AD_AUDIO_COLLECTION, id), {
     heardCount: increment(1),
   })
+=======
+  if (metadata.language !== undefined && metadata.language !== '') {
+    track.language = metadata.language
+  }
+  if (metadata.vocalsOnly) {
+    track.vocalsOnly = true
+  }
+  
+  // Save metadata to Firestore using the same ID as the track
+  const trackDocRef = doc(db, TRACKS_COLLECTION, id)
+  await setDoc(trackDocRef, track)
+  console.log('[Upload] Metadata saved to Firestore with ID:', id)
+  
+  return { url: downloadURL, track }
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 }
 
 export async function deleteAudioFromCloud(track: AudioTrack): Promise<void> {
@@ -463,18 +502,23 @@ export async function deleteAudioFromCloud(track: AudioTrack): Promise<void> {
   }
   
   // Delete from Firestore
-  const q = query(collection(db, TRACKS_COLLECTION))
-  const snapshot = await getDocs(q)
-  snapshot.forEach((d) => {
-    const data = d.data() as AudioTrack
-    if (data.id === track.id) {
-      deleteDoc(doc(db, TRACKS_COLLECTION, d.id))
+  try {
+    await deleteDoc(doc(db, TRACKS_COLLECTION, track.id))
+  } catch {
+    const q = query(collection(db, TRACKS_COLLECTION))
+    const snapshot = await getDocs(q)
+    for (const d of snapshot.docs) {
+      const data = d.data() as AudioTrack
+      if (data.id === track.id) {
+        await deleteDoc(doc(db, TRACKS_COLLECTION, d.id))
+      }
     }
-  })
+  }
 }
 
 // Get all tracks from Firestore with views
 export async function getAllTracks(): Promise<AudioTrack[]> {
+<<<<<<< HEAD
   const tracksQuery = query(collection(db, TRACKS_COLLECTION), orderBy('uploadedAt', 'desc'))
   const kidsQuery = query(
     collection(db, 'kidsSubmissions'),
@@ -550,10 +594,42 @@ export async function getAllTracks(): Promise<AudioTrack[]> {
   })
 
   return [...mappedUserTracks, ...mappedKidsTracks, ...mappedTracks].sort((a, b) => b.uploadedAt - a.uploadedAt)
+=======
+  const q = query(collection(db, TRACKS_COLLECTION), orderBy('uploadedAt', 'desc'))
+  const snapshot = await getDocs(q)
+  return snapshot.docs.map((d) => {
+    const data = d.data() as AudioTrack
+    return {
+      ...data,
+      views: typeof data.views === 'number' ? data.views : 0,
+    }
+  })
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 }
 
 export function getTracksByCategory(category: AudioCategory): Promise<AudioTrack[]> {
   return getAllTracks().then(tracks => tracks.filter(t => t.category === category))
+}
+
+/** Increment play/view count for a track. */
+export async function incrementTrackViews(trackId: string): Promise<void> {
+  try {
+    await updateDoc(doc(db, TRACKS_COLLECTION, trackId), { views: increment(1) })
+    return
+  } catch {
+    // Fallback when Firestore doc id differs from track.id
+  }
+
+  const q = query(collection(db, TRACKS_COLLECTION))
+  const snapshot = await getDocs(q)
+  for (const d of snapshot.docs) {
+    const data = d.data() as AudioTrack
+    if (data.id === trackId) {
+      await updateDoc(doc(db, TRACKS_COLLECTION, d.id), { views: increment(1) })
+      return
+    }
+  }
+  throw new Error('Track not found')
 }
 
 // Legacy localStorage functions (not used anymore)
@@ -571,9 +647,17 @@ export function deleteTrack(id: string): void {
 
 export async function updateTrackInCloud(
   id: string, 
-  patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic'>>
+  patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic' | 'language'>>
 ): Promise<void> {
-  // Find the Firestore document with matching track id
+  // Prefer direct doc id
+  try {
+    await updateDoc(doc(db, TRACKS_COLLECTION, id), patch)
+    console.log('[Update] Track updated in Firestore:', id, patch)
+    return
+  } catch {
+    // Fallback: scan if doc id differs
+  }
+
   const q = query(collection(db, TRACKS_COLLECTION))
   const snapshot = await getDocs(q)
   
@@ -629,10 +713,18 @@ export function formatDuration(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+<<<<<<< HEAD
 export function formatUploadDate(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString([], {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   })
+=======
+export function formatViews(views: number): string {
+  if (views < 1000) return String(views)
+  if (views < 10000) return `${(views / 1000).toFixed(1).replace(/\.0$/, '')}k`
+  if (views < 1000000) return `${Math.round(views / 1000)}k`
+  return `${(views / 1000000).toFixed(1).replace(/\.0$/, '')}M`
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 }

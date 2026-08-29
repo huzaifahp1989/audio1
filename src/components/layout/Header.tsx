@@ -1,5 +1,6 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
+<<<<<<< HEAD
 import { BookOpen, Music2, Mic2, Shield, Home, Mic, BookText, Scroll, Hand, GraduationCap, BarChart3, Radio, Smile, Upload, UserPlus, LogOut, LogIn, Heart, Search } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useGlobalSearch } from '../../context/GlobalSearchContext'
@@ -25,6 +26,20 @@ const NAV_LINKS = [
   { to: '/submit-audio', label: 'Submit Audio', icon: Upload },
   { to: '/user-submissions-approval', label: 'Review Submissions', icon: Shield },
   { to: '/analytics', label: 'Stats', icon: BarChart3 },
+=======
+import { BookOpen, Music2, Mic2, Star, Shield, Home, Menu, X, Mic, BookText, Scroll, Hand, Car } from 'lucide-react'
+
+const NAV_LINKS = [
+  { to: '/', label: 'Home', icon: Home },
+  { to: '/car', label: 'Car', icon: Car },
+  { to: '/quran', label: 'Quran', icon: BookOpen },
+  { to: '/nasheeds', label: 'Nasheeds', icon: Music2 },
+  { to: '/talks', label: 'Talks', icon: Mic2 },
+  { to: '/audiobooks', label: 'Audiobooks', icon: BookText },
+  { to: '/hadith', label: 'Hadith', icon: Scroll },
+  { to: '/dua', label: 'Dua', icon: Hand },
+  { to: '/kids-recordings', label: 'Kids', icon: Star },
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
   { to: '/record', label: 'Record', icon: Mic },
   { to: '/admin', label: 'Admin', icon: Shield },
 ]
@@ -56,9 +71,23 @@ export default function Header({ onAuthClick }: HeaderProps) {
           </span>
         </Link>
 
+<<<<<<< HEAD
         <nav className="hidden md:flex items-center gap-1 ml-4 flex-1 overflow-x-auto scrollbar-hide">
           {NAV_LINKS.map(({ to, label, icon: Icon, activeClass }) => {
             const active = location.pathname === to
+=======
+        {/* Desktop nav */}
+        <nav className="hidden md:flex items-center gap-1 ml-4 flex-1">
+          {NAV_LINKS.map(({ to, label, icon: Icon }) => {
+            const active = to === '/'
+              ? location.pathname === '/'
+              : to === '/kids-recordings'
+                ? location.pathname === '/kids'
+                  || location.pathname === '/kids-recordings'
+                  || location.pathname.startsWith('/kids/')
+                  || location.pathname.startsWith('/kids-recordings')
+                : location.pathname === to || location.pathname.startsWith(to + '/')
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
             return (
               <Link
                 key={to}
@@ -94,6 +123,7 @@ export default function Header({ onAuthClick }: HeaderProps) {
             <Search size={16} />
           </button>
 
+<<<<<<< HEAD
           <GlobalNoticeBell compact />
           <ThemeToggle />
 
@@ -108,6 +138,28 @@ export default function Header({ onAuthClick }: HeaderProps) {
                 onClick={handleSignOut}
                 className="flex items-center gap-2 px-3 py-2 text-[var(--theme-muted)] hover:text-[var(--theme-ink)] hover:bg-[var(--theme-soft)] rounded-xl font-semibold text-sm transition-all"
                 title="Sign out"
+=======
+      {/* Mobile menu */}
+      {mobileOpen && (
+        <div className="md:hidden border-t border-slate-200 bg-white">
+          {NAV_LINKS.map(({ to, label, icon: Icon }) => {
+            const active = to === '/'
+              ? location.pathname === '/'
+              : to === '/kids-recordings'
+                ? location.pathname === '/kids'
+                  || location.pathname === '/kids-recordings'
+                  || location.pathname.startsWith('/kids/')
+                  || location.pathname.startsWith('/kids-recordings')
+                : location.pathname === to || location.pathname.startsWith(to + '/')
+            return (
+              <Link
+                key={to}
+                to={to}
+                onClick={() => setMobileOpen(false)}
+                className={`flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors ${
+                  active ? 'text-violet-700 bg-violet-50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
               >
                 <LogOut size={16} />
                 <span className="hidden sm:inline">Sign Out</span>

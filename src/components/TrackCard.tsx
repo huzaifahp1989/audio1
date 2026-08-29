@@ -1,4 +1,5 @@
 import React from 'react'
+<<<<<<< HEAD
 import { Play, Pause, Eye, List } from 'lucide-react'
 import type { AudioTrack } from '../types'
 import { useAudioPlayer } from '../context/AudioPlayerContext'
@@ -6,6 +7,12 @@ import { formatDuration, formatUploadDate } from '../lib/storage'
 import { formatViews } from '../lib/views'
 import ShareButton from './ShareButton'
 import InlinePlayerPanel from './InlinePlayerPanel'
+=======
+import { Play, Pause, Music, SkipBack, SkipForward, ChevronLeft, ChevronRight, Eye } from 'lucide-react'
+import type { AudioTrack } from '../types'
+import { useAudioPlayer } from '../context/AudioPlayerContext'
+import { formatDuration, formatFileSize, formatViews } from '../lib/storage'
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 
 interface TrackCardProps {
   track: AudioTrack
@@ -16,8 +23,12 @@ interface TrackCardProps {
 export default function TrackCard({ track, tracks, index }: TrackCardProps) {
   const { currentTrack, isPlaying, playFromList, togglePlay, addTrackToPlaylist, playlist } = useAudioPlayer()
   const isActive = currentTrack?.id === track.id
+<<<<<<< HEAD
   const displayTrack = isActive && currentTrack ? currentTrack : track
   const isAddedToPlaylist = playlist.some((item) => item.id === track.id)
+=======
+  const views = track.views ?? 0
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 
   const handlePlayPause = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -100,6 +111,7 @@ export default function TrackCard({ track, tracks, index }: TrackCardProps) {
             </div>
           </div>
 
+<<<<<<< HEAD
           <div className="min-w-0 flex-1 w-full">
             <div className="flex flex-col-reverse items-start gap-1">
               {isActive && (
@@ -139,6 +151,46 @@ export default function TrackCard({ track, tracks, index }: TrackCardProps) {
                   </button>
                   <ShareButton track={track} className="h-9 w-9" />
                 </div>
+=======
+          {/* Info */}
+          <div className="min-w-0 flex-1">
+            <h3
+              dir={/[\u0600-\u06FF]/.test(track.title) ? 'rtl' : 'ltr'}
+              className={`font-semibold text-sm leading-tight truncate ${
+                isActive ? 'text-violet-700' : 'text-slate-800'
+              }`}
+            >
+              {track.title}
+            </h3>
+            <p
+              dir={/[\u0600-\u06FF]/.test(track.reciter || '') ? 'rtl' : 'ltr'}
+              className="text-xs text-slate-500 mt-0.5 truncate"
+            >
+              {track.reciter}
+            </p>
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              {(() => {
+                const lang = (track.language || track.topic || '').toLowerCase()
+                if (lang === 'arabic') return <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">Arabic</span>
+                if (lang === 'english') return <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-100">English</span>
+                if (lang === 'urdu') return <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100">Urdu</span>
+                return null
+              })()}
+              {(track.category === 'kids-nasheeds' || track.category === 'kids-quran' || track.category === 'kids-stories') && (
+                <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-pink-50 text-pink-700 border border-pink-100">
+                  Kids
+                </span>
+              )}
+              <span
+                className="inline-flex items-center gap-1 text-xs text-slate-500 tabular-nums"
+                title={`${views} view${views === 1 ? '' : 's'}`}
+              >
+                <Eye size={12} className="text-slate-400" />
+                {formatViews(views)}
+              </span>
+              {track.duration !== undefined && (
+                <span className="text-xs text-slate-400 tabular-nums">{formatDuration(track.duration)}</span>
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
               )}
             </div>
           </div>

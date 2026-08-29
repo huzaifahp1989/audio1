@@ -22,6 +22,7 @@ export default function Layout() {
   }
 
   return (
+<<<<<<< HEAD
     <GlobalSearchProvider>
     <AuthModalProvider openAuthModal={openAuthModal}>
     <div className={`app-shell min-h-screen text-[var(--theme-ink)] flex flex-col ${isCarMode ? 'car-mode-shell' : ''}`}>
@@ -32,6 +33,12 @@ export default function Layout() {
           <Outlet />
         </div>
         {!isCarMode && <PlaylistPanel />}
+=======
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col overflow-x-hidden">
+      <Header />
+      <main className="flex-1 pb-32 min-w-0 w-full overflow-x-hidden">
+        <Outlet />
+>>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
       </main>
       {!isCarMode && <MobilePopMenu />}
       {!isCarMode && <GlobalPlayerBar />}

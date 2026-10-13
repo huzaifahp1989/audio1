@@ -4,7 +4,9 @@ import { BookOpen, Music2, Mic2, ArrowRight, BookText, Scroll, Hand, GraduationC
 import type { AudioTrack } from '../types'
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
 import { useGlobalSearch } from '../context/GlobalSearchContext'
+import { useAudioPlayer } from '../context/AudioPlayerContext'
 import TrackCard from '../components/TrackCard'
+import CompactPlayer from '../components/CompactPlayer'
 import ContinueListeningCard from '../components/ContinueListeningCard'
 import DailyPickCard from '../components/DailyPickCard'
 import StreakBanner from '../components/StreakBanner'
@@ -115,6 +117,7 @@ function SectionHeading({ icon: Icon, title, accent }: { icon: React.ElementType
 export default function HomePage() {
   const { tracks, loading } = useAudioLibrary()
   const { openSearch } = useGlobalSearch()
+  const { currentTrack } = useAudioPlayer()
   const [survey, setSurvey] = useState({
     favoriteCategory: 'quran',
     nasheedLanguage: '',
@@ -229,6 +232,16 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Now Playing Player */}
+      {currentTrack && latestUploads.length > 0 && (
+        <div className="mb-12">
+          <CompactPlayer
+            tracks={latestUploads}
+            currentIndex={latestUploads.findIndex(t => t.id === currentTrack.id) >= 0 ? latestUploads.findIndex(t => t.id === currentTrack.id) : 0}
+          />
+        </div>
+      )}
 
       {/* Latest Uploads section */}
       {latestUploads.length > 0 && (

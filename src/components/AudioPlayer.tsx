@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Play, Pause, Volume2, VolumeX, X, Minus, Maximize2, GripHorizontal, SkipBack, SkipForward, ChevronLeft, ChevronRight, Eye } from 'lucide-react'
 import { useAudioPlayer } from '../context/AudioPlayerContext'
-import { formatDuration, formatViews } from '../lib/storage'
+import { formatDuration } from '../lib/storage'
+import { formatViews } from '../lib/views'
 
 export default function AudioPlayer() {
   const {

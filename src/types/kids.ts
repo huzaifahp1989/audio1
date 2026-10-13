@@ -36,6 +36,8 @@ export interface UserSubmission {
   description?: string
   reciter?: string
   topic?: string
+  language?: string
+  submitterId?: string | null
   audioUrl: string
   fileName: string
   fileSize: number

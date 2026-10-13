@@ -25,6 +25,7 @@ Add these environment variables in Vercel Project Settings → Environment Varia
 **Required:**
 - `VITE_FIREBASE_STORAGE_BUCKET` - Your Firebase storage bucket (e.g., `audio-68d1f.firebasestorage.app`)
 - `VITE_ENABLE_UPLOAD_API_FALLBACK` - Set to `true` for CORS-protected environments
+- `BLOB_READ_WRITE_TOKEN` - Vercel Blob token used for direct uploads when Firebase Storage is unavailable
 
 **Firebase Config** (if using server-side authentication):
 - `FIREBASE_PROJECT_ID`
@@ -48,8 +49,8 @@ git push origin main
 - **Framework:** Vite
 - **Build Command:** `npm run build`
 - **Output Directory:** `dist`
-- **API Routes:** 
-  - `/api/upload` - File upload (60s timeout, 1GB memory)
+- **API Routes:**
+  - `/api/upload` - Issues size- and content-type-limited client upload tokens for Vercel Blob
   - `/api/podcast-rss` - Podcast RSS generation
   - `/api/analytics` - Analytics endpoints
 
@@ -66,7 +67,7 @@ git push origin main
 - Firebase Storage for audio files
 
 ✅ **API Fallback**
-- Server-side upload via `/api/upload` when Firebase Storage is blocked (CORS)
+- Direct-to-Blob client uploads via a size- and content-type-limited token from `/api/upload` when Firebase Storage is blocked (CORS)
 
 ✅ **Optimized Builds**
 - TypeScript compilation

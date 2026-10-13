@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
 
 import { Link } from 'react-router-dom'
-import { Mic2, Search, Eye, Sparkles, ChevronDown, Heart } from 'lucide-react'
+import { Mic2, Search, Eye, Sparkles, ChevronDown, Heart, Upload } from 'lucide-react'
 import { useFavorites } from '../context/FavoritesContext'
 
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
@@ -497,6 +497,15 @@ export default function TalksPage() {
       <section>
 
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3 px-0.5">
+      <div className="mb-4 flex justify-end sm:mb-6">
+        <Link
+          to="/submit-audio?category=talks"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-700"
+        >
+          <Upload size={16} /> Submit a talk
+        </Link>
+      </div>
+
 
           <h2 className="text-sm font-bold text-[var(--theme-ink)]">{listTitle}</h2>
 

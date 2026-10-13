@@ -1,19 +1,25 @@
 import React, { useEffect, useState } from 'react'
 import { Upload, FileText, FileAudio, User, Mail, CheckCircle, X } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { addDoc, collection } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { uploadFileToBestStorage } from '../lib/storage'
 import { useAuth } from '../context/AuthContext'
+import { useAuthModal } from '../context/AuthModalContext'
 import { getMaxUploadBytes, formatMaxUploadLabel } from '../lib/uploadLimits'
 import { trackEvent } from '../lib/analytics'
-import type { AudioCategory } from '../types'
+import { TALKS_TOPICS } from '../constants/categories'
+import type { AudioCategory, NasheedLanguage } from '../types'
 
 const SUBMISSION_CATEGORIES: { id: AudioCategory; label: string }[] = [
   { id: 'quran', label: 'Quran' },
   { id: 'nasheeds', label: 'Nasheeds' },
   { id: 'talks', label: 'Talks' },
 ]
+
+function submissionCategoryFromQuery(value: string | null): AudioCategory {
+  return SUBMISSION_CATEGORIES.find((option) => option.id === value)?.id ?? 'quran'
+}
 
 const ACCEPTED_AUDIO_TYPES = 'audio/*'
 
@@ -39,13 +45,18 @@ async function extractAudioDuration(file: File): Promise<number | undefined> {
 
 export default function SubmitAudioPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { user, profile } = useAuth()
+  const { openAuthModal } = useAuthModal()
   const isSignedIn = !!user
   const [name, setName] = useState(() => profile?.full_name || localStorage.getItem('submitName') || '')
   const [email, setEmail] = useState(() => user?.email || profile?.email || localStorage.getItem('submitEmail') || '')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [category, setCategory] = useState<AudioCategory>('quran')
+  const [category, setCategory] = useState<AudioCategory>(() => submissionCategoryFromQuery(searchParams.get('category')))
+  const [reciter, setReciter] = useState('')
+  const [topic, setTopic] = useState('')
+  const [language, setLanguage] = useState<NasheedLanguage | ''>('')
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -93,8 +104,12 @@ export default function SubmitAudioPage() {
     event.preventDefault()
     setErrorMessage('')
 
-    if (!name.trim() || !email.trim() || !title.trim() || !file) {
+    if (!name.trim() || !email.trim() || !title.trim() || !reciter.trim() || !file) {
       setErrorMessage('Please complete all required fields and choose an audio file.')
+      return
+    }
+    if (category === 'talks' && !topic) {
+      setErrorMessage('Please choose a topic for your talk.')
       return
     }
 
@@ -110,8 +125,12 @@ export default function SubmitAudioPage() {
       await addDoc(collection(db, 'userSubmissions'), {
         title: title.trim(),
         category,
+        reciter: reciter.trim(),
+        ...(category === 'talks' ? { topic } : {}),
+        ...(category === 'nasheeds' && language ? { language } : {}),
         contributorName: name.trim(),
         email: email.trim(),
+        submitterId: user?.id ?? null,
         description: description.trim(),
         audioUrl: downloadUrl,
         fileName,
@@ -126,6 +145,9 @@ export default function SubmitAudioPage() {
       setPreviewUrl(null)
       setTitle('')
       setDescription('')
+      setReciter('')
+      setTopic('')
+      setLanguage('')
       setCategory('quran')
     } catch (error: unknown) {
       console.error('SubmitAudioPage error', error)
@@ -151,15 +173,20 @@ export default function SubmitAudioPage() {
   return (
     <div className="px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto w-full max-w-5xl">
-        <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-2xl">
+        <div className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-2xl sm:p-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Submit Your Audio</h1>
+              <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">Submit Your Audio</h1>
               <p className="mt-1 text-sm text-slate-500">
                 Upload your Quran, nasheed, or talk. It will be approved by admin before going live.
               </p>
             </div>
             <div className="flex items-center gap-3">
+              {isSignedIn && (
+                <Link to="/my-submissions" className="text-sm font-semibold text-violet-700 hover:text-violet-900">
+                  My submissions
+                </Link>
+              )}
               <div className="inline-flex items-center gap-2 rounded-3xl px-4 py-3 text-sm font-semibold bg-violet-50 text-violet-700">
                 <Upload size={18} /> Pending review
               </div>
@@ -178,8 +205,24 @@ export default function SubmitAudioPage() {
             </div>
           </div>
 
+          {!isSignedIn && (
+            <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-violet-200 bg-violet-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-800">Create a free contributor account</p>
+                <p className="mt-1 text-xs text-slate-600">Track your submissions and use your saved profile details next time.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => openAuthModal('signup')}
+                className="inline-flex min-h-11 items-center justify-center rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
+              >
+                Sign up or log in
+              </button>
+            </div>
+          )}
+
           {submitted ? (
-            <div className="mt-10 rounded-[1.75rem] border border-green-200 bg-green-50 p-8 text-center">
+            <div className="mt-8 rounded-[1.75rem] border border-green-200 bg-green-50 p-4 text-center sm:mt-10 sm:p-8">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white text-green-600 shadow-sm">
                 <CheckCircle size={32} />
               </div>
@@ -197,6 +240,13 @@ export default function SubmitAudioPage() {
                   className="rounded-2xl bg-violet-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-violet-700"
                 >
                   Submit another audio
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/my-submissions')}
+                  className="rounded-2xl border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  View my submissions
                 </button>
                 <button
                   type="button"
@@ -241,6 +291,55 @@ export default function SubmitAudioPage() {
                     />
                   </div>
                 </label>
+              </div>
+
+              <div className={`grid gap-6 ${category === 'nasheeds' ? 'sm:grid-cols-2' : ''}`}>
+                <label className="block">
+                  <span className="text-sm font-semibold text-slate-700">
+                    {category === 'quran' ? 'Reciter / Qari *' : category === 'nasheeds' ? 'Artist *' : 'Speaker *'}
+                  </span>
+                  <input
+                    value={reciter}
+                    onChange={(event) => setReciter(event.target.value)}
+                    className="mt-2 w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-violet-500"
+                    placeholder={category === 'quran' ? 'Reciter name' : category === 'nasheeds' ? 'Artist name' : 'Speaker name'}
+                    required
+                  />
+                </label>
+
+                {category === 'nasheeds' && (
+                  <label className="block">
+                    <span className="text-sm font-semibold text-slate-700">Language</span>
+                    <select
+                      value={language}
+                      onChange={(event) => setLanguage(event.target.value as NasheedLanguage | '')}
+                      className="mt-2 w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-violet-500"
+                    >
+                      <option value="">Select language (optional)</option>
+                      <option value="english">English</option>
+                      <option value="urdu">Urdu</option>
+                      <option value="arabic">Arabic</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </label>
+                )}
+
+                {category === 'talks' && (
+                  <label className="block">
+                    <span className="text-sm font-semibold text-slate-700">Topic *</span>
+                    <select
+                      value={topic}
+                      onChange={(event) => setTopic(event.target.value)}
+                      className="mt-2 w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-violet-500"
+                      required
+                    >
+                      <option value="">Choose a topic</option>
+                      {TALKS_TOPICS.map((item) => (
+                        <option key={item.id} value={item.id}>{item.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
               </div>
 
               <div className="grid gap-6 lg:grid-cols-2">
@@ -328,7 +427,7 @@ export default function SubmitAudioPage() {
                 <div className="rounded-3xl bg-violet-50 p-4 text-sm text-slate-600">
                   <div className="flex items-center gap-2">
                     <Upload size={16} />
-                    Uploads are stored securely and reviewed before publishing.
+                    Uploads are reviewed before publishing.
                   </div>
                 </div>
                 <button

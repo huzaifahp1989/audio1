@@ -4,10 +4,10 @@ import { BookOpen, Music2, Mic2, Shield, Home, Mic, BookText, Scroll, Hand, Grad
 
 const TABS = [
   { to: '/', label: 'Home', icon: Home },
-  { to: '/quran', label: 'Quran', icon: BookOpen, activeClass: 'bg-gradient-to-b from-blue-100 to-sky-100 text-blue-800' },
-  { to: '/nasheeds', label: 'Nasheeds', icon: Music2, activeClass: 'bg-gradient-to-b from-blue-100 to-sky-100 text-blue-800' },
-  { to: '/talks', label: 'Talks', icon: Mic2, activeClass: 'bg-gradient-to-b from-blue-100 to-sky-100 text-blue-800' },
-  { to: '/favorites', label: 'Favorites', icon: Heart, activeClass: 'bg-gradient-to-b from-rose-100 to-pink-100 text-rose-800' },
+  { to: '/quran', label: 'Quran', icon: BookOpen, activeClass: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' },
+  { to: '/nasheeds', label: 'Nasheeds', icon: Music2, activeClass: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' },
+  { to: '/talks', label: 'Talks', icon: Mic2, activeClass: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' },
+  { to: '/favorites', label: 'Favorites', icon: Heart, activeClass: 'bg-rose-500/10 text-rose-700 dark:text-rose-300' },
   { to: '/podcast', label: 'Podcast', icon: Radio },
   { to: '/audiobooks', label: 'Books', icon: BookText },
   { to: '/hadith', label: 'Hadith', icon: Scroll },
@@ -33,10 +33,10 @@ export default function MobileTabBar() {
   }, [location.pathname])
 
   return (
-    <div className="md:hidden sticky top-[4.5rem] z-30 px-2 sm:px-3">
+    <div className="sticky top-16 z-30 px-2 sm:top-[4.5rem] sm:px-3 md:hidden">
       <div
         ref={scrollRef}
-        className="flex overflow-x-auto scrollbar-hide gap-1 px-1.5 py-1.5 rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-surface)]/95 shadow-sm"
+        className="flex min-w-0 gap-1 overflow-x-auto rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-surface)]/95 px-1.5 py-1.5 shadow-sm"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {TABS.map(({ to, label, icon: Icon, activeClass }) => {

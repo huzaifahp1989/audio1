@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react'
-import { BookOpen, Eye, Sparkles, ChevronDown, Baby, GraduationCap } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { BookOpen, Eye, Sparkles, ChevronDown, Baby, GraduationCap, Upload } from 'lucide-react'
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
 import TrackList from '../components/TrackList'
 import CategoryUploadPanel from '../components/CategoryUploadPanel'
@@ -48,6 +49,12 @@ export default function QuranPage() {
               {formatViews(totalViews)} plays
             </span>
           </p>
+          <Link
+            to="/submit-audio?category=quran"
+            className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-sky-50"
+          >
+            <Upload size={16} /> Submit Quran audio
+          </Link>
         </div>
       </section>
 

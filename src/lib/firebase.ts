@@ -1,12 +1,8 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
-<<<<<<< HEAD
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, orderBy, updateDoc, setDoc, getDoc, increment } from 'firebase/firestore'
 import { getAnalytics, isSupported, logEvent, setUserId, type Analytics } from 'firebase/analytics'
-=======
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, updateDoc, setDoc, increment } from 'firebase/firestore'
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 
 /** Primary app — where tracks / storage live */
 const firebaseConfig = {
@@ -34,7 +30,6 @@ const auth = getAuth(app)
 const storage = getStorage(app)
 const db = getFirestore(app)
 
-<<<<<<< HEAD
 /** Lazily init Analytics so module load never blocks the UI. */
 let analytics: Analytics | null = null
 let analyticsReady: Promise<Analytics | null> | null = null
@@ -91,6 +86,3 @@ export {
   getDoc,
 }
 export type { Analytics }
-=======
-export { storage, db, ref, uploadBytes, getDownloadURL, deleteObject, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, updateDoc, setDoc, increment }
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3

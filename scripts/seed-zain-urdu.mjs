@@ -61,6 +61,26 @@ const ITEMS = [
   { archiveId: 'AbdallahKamelSura1AlFatiha_201906', file: 'Awais (Owais) Raza Qadri_ Yaad Mein Teri Khabar.mp3', title: 'Yaad Mein Teri Khabar', reciter: 'Owais Raza Qadri' },
   { archiveId: 'AbdallahKamelSura1AlFatiha_201906', file: 'Awais (Owais) Raza Qadri_ Dil Mera Duniya Pe Sheda Ho Gaya.mp3', title: 'Dil Mera Duniya Pe Sheda Ho Gaya', reciter: 'Owais Raza Qadri' },
   { archiveId: 'AbdallahKamelSura1AlFatiha_201906', file: 'Awais (Owais) Raza Qadri_ Gunahon Ki Aadat Naat.mp3', title: 'Gunahon Ki Aadat', reciter: 'Owais Raza Qadri' },
+
+  // Urdu — Islamic Academy.org collection (public Archive.org mirror)
+  { archiveId: 'Islamicacademy.orgNaats', file: '001Aagaey_mustafa-khursheedAhmad.mp3', title: 'Aagaey Mustafa', reciter: 'Khursheed Ahmad' },
+  { archiveId: 'Islamicacademy.orgNaats', file: '002Aajsikmitradi-khursheedAhmad.mp3', title: 'Aaj Sik Mitra Di', reciter: 'Khursheed Ahmad' },
+  { archiveId: 'Islamicacademy.orgNaats', file: '003Allahallahallahhu-khursheedAhmad.mp3', title: 'Allah Allah Allah Hu', reciter: 'Khursheed Ahmad' },
+  { archiveId: 'Islamicacademy.orgNaats', file: '006Chal_madeenay-khursheedAhmad.mp3', title: 'Chal Madeenay', reciter: 'Khursheed Ahmad' },
+  { archiveId: 'Islamicacademy.orgNaats', file: '020Shah-e-medina-khursheedAhmad.mp3', title: 'Shah-e-Medina', reciter: 'Khursheed Ahmad' },
+  { archiveId: 'Islamicacademy.orgNaats', file: '055Aaysabzgumbadwalay-fasihudeenSeharwardi.mp3', title: 'Aay Sabz Gumbad Walay', reciter: 'Fasihudeen Seharwardi' },
+  { archiveId: 'Islamicacademy.orgNaats', file: '007Harwaqttasawwurmein-khursheedAhmad.mp3', title: 'Har Waqt Tasawwur Mein', reciter: 'Khursheed Ahmad' },
+  { archiveId: 'Islamicacademy.orgNaats', file: '008Jashn_e_aamad_e_rasool-khursheedAhmad.mp3', title: 'Jashn-e-Aamad-e-Rasool', reciter: 'Khursheed Ahmad' },
+  { archiveId: 'Islamicacademy.orgNaats', file: '015Nabikayishqnay-khursheedAhmad.mp3', title: 'Nabi Kay Ishq Nay', reciter: 'Khursheed Ahmad' },
+  { archiveId: 'Islamicacademy.orgNaats', file: '017Sallayallapukaro-khursheedAhmad.mp3', title: 'Sallay Ala Pukaro', reciter: 'Khursheed Ahmad' },
+  { archiveId: 'Islamicacademy.orgNaats', file: '025Ya_sallay_alla_mehboob_e_khuda-khursheedAhmad.mp3', title: 'Ya Sallay Ala Mehboob-e-Khuda', reciter: 'Khursheed Ahmad' },
+  { archiveId: 'Islamicacademy.orgNaats', file: '031Dilmainhayarzoowmadinah-imranSheikhQadri.mp3', title: 'Dil Mein Hai Arzoo-e-Madinah', reciter: 'Muhammad Imran Sheikh Qadri' },
+  { archiveId: 'Islamicacademy.orgNaats', file: '038Rahmatallilaalameen-imranSheikhQadri.mp3', title: 'Rahmat-allil-Aalameen', reciter: 'Muhammad Imran Sheikh Qadri' },
+  { archiveId: 'Islamicacademy.orgNaats', file: '061Ay_bahaaray_taiba-fasihudeenSeharwardi.mp3', title: 'Ay Bahaaray Taiba', reciter: 'Fasihudeen Seharwardi' },
+  { archiveId: 'Islamicacademy.orgNaats', file: '074Hasbirabbijallallah-fasihudeenSeharwardi.mp3', title: 'Hasbi Rabbi Jallallah', reciter: 'Fasihudeen Seharwardi' },
+  { archiveId: 'Islamicacademy.orgNaats', file: '082Madeenaywaalaymeraylajpal-fasihudeenSeharwardi.mp3', title: 'Madeenay Waalay Meray Lajpal', reciter: 'Fasihudeen Seharwardi' },
+  { archiveId: 'Islamicacademy.orgNaats', file: '127Aay_saba_lay_ja-mushtaqQadri.mp3', title: 'Aay Saba Lay Ja', reciter: 'Muhammad Mushtaq Qadri' },
+  { archiveId: 'Islamicacademy.orgNaats', file: '131Ay_shehanshahe_madinah-mushtaqQadri.mp3', title: 'Ay Shehan Shah-e-Madinah', reciter: 'Muhammad Mushtaq Qadri' },
 ]
 
 function archiveUrl(archiveId, file) {

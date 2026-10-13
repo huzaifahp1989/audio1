@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Eye } from 'lucide-react'
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
 import { useAudioPlayer } from '../context/AudioPlayerContext'
-import InlinePlayerPanel from '../components/InlinePlayerPanel'
+import CompactPlayer from '../components/CompactPlayer'
 import RelatedTracks from '../components/RelatedTracks'
 import ReactionBar from '../components/ReactionBar'
 import ShareButton from '../components/ShareButton'
@@ -87,7 +87,7 @@ export default function TrackPage() {
         </div>
 
         <div className="mt-6">
-          <InlinePlayerPanel variant={variant} tracks={tracks} index={index >= 0 ? index : 0} />
+          <CompactPlayer tracks={tracks} currentIndex={index >= 0 ? index : 0} variant={variant} />
         </div>
       </div>
 

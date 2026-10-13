@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Shield, Upload, Trash2, LogOut, CheckCircle, AlertCircle, FileAudio, X, Layers, Pencil, Save, FolderOpen, Clock, ChevronRight, Play, FileText, Sparkles, Eye, Move, Scissors, Smile, MessageSquarePlus, Video } from 'lucide-react'
@@ -69,70 +68,14 @@ function isToday(ts: number): boolean {
   const now = new Date()
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
 }
-=======
-import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { Shield, Upload, Trash2, LogOut, CheckCircle, AlertCircle, FileAudio, X, Layers, Pencil, Save, FolderOpen, Clock, ChevronRight, Play, Pause, FileText, Search, Mic, Star, Eye } from 'lucide-react'
-import { useAudioLibrary } from '../hooks/useAudioLibrary'
-import type { BulkUploadItem, BulkUploadResult } from '../hooks/useAudioLibrary'
-import { useAudioPlayer } from '../context/AudioPlayerContext'
-import { ADMIN_PASSWORD, ALL_CATEGORIES_LIST, QURAN_RECITERS, NASHEED_ARTISTS, TALKS_SPEAKERS, TALKS_TOPICS, AUDIOBOOK_AUTHORS, HADITH_NARRATORS, DUA_CATEGORIES } from '../constants/categories'
-import type { AudioCategory } from '../types'
-import type { AudioTrack } from '../types'
-import { isKidsCategory, isRecordedTrack } from '../types'
-import { formatFileSize, formatDuration, formatViews } from '../lib/storage'
-import { getAllDrafts, deleteDraft, getDraft, type RecordingDraft } from '../lib/indexedDb'
-
-const SESSION_KEY = 'admin_authenticated'
-const LOAD_DRAFT_KEY = 'load_draft_id'
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 
 function getRecitersForCategory(cat: AudioCategory): string[] {
-  if (cat === 'quran' || cat === 'kids-quran') return QURAN_RECITERS
-  if (cat === 'nasheeds' || cat === 'kids-nasheeds') return NASHEED_ARTISTS
+  if (cat === 'quran') return QURAN_RECITERS
+  if (cat === 'nasheeds') return NASHEED_ARTISTS
   if (cat === 'talks') return TALKS_SPEAKERS
   if (cat === 'audiobooks') return AUDIOBOOK_AUTHORS
   if (cat === 'hadith') return HADITH_NARRATORS
   return []
-}
-
-function categoryEmoji(cat: AudioCategory): string {
-  switch (cat) {
-    case 'quran':
-    case 'kids-quran':
-      return '📖'
-    case 'nasheeds':
-    case 'kids-nasheeds':
-      return '🎵'
-    case 'talks':
-      return '🎙️'
-    case 'audiobooks':
-      return '📚'
-    case 'hadith':
-      return '📜'
-    case 'dua':
-      return '🤲'
-    case 'kids-stories':
-      return '🌟'
-    default:
-      return '⭐'
-  }
-}
-
-function draftToTrack(draft: RecordingDraft, audioUrl: string): AudioTrack {
-  return {
-    id: `draft-${draft.id}`,
-    title: draft.title,
-    category: (draft.category as AudioCategory) || 'talks',
-    reciter: draft.reciter || 'Draft recording',
-    fileName: `${draft.title || 'draft'}.wav`,
-    fileSize: draft.blob.size,
-    mimeType: draft.blob.type || 'audio/wav',
-    uploadedAt: draft.savedAt,
-    audioUrl,
-    duration: draft.duration,
-    topic: draft.topic,
-  }
 }
 
 function supportsTextContent(cat: AudioCategory): boolean {
@@ -302,7 +245,7 @@ function EditModal({
   onClose,
 }: {
   track: AudioTrack
-  onSave: (patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic' | 'language'>>) => void
+  onSave: (patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic'>>) => void
   onClose: () => void
 }) {
   const hasBuiltInCategory = ADMIN_CATEGORY_OPTIONS.some((option) => option.value === track.category)
@@ -318,10 +261,6 @@ function EditModal({
     return reciters.includes(track.reciter) ? '' : track.reciter
   })
   const [topic, setTopic] = useState(track.topic || '')
-  const [language, setLanguage] = useState<'arabic' | 'english' | 'urdu'>(() => {
-    const lang = (track.language || track.topic || 'arabic').toLowerCase()
-    return lang === 'english' || lang === 'urdu' ? lang : 'arabic'
-  })
 
   const effectiveCategory = category === CUSTOM_CATEGORY_VALUE ? customCategory.trim() : category
   const reciters = getRecitersForCategory(effectiveCategory)
@@ -337,14 +276,8 @@ function EditModal({
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
-<<<<<<< HEAD
     if (!title.trim() || !effectiveCategory.trim()) return
     const patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic'>> = { 
-=======
-    if (!title.trim() || !effectiveReciter.trim()) return
-    const isNasheed = category === 'nasheeds' || category === 'kids-nasheeds'
-    const patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic' | 'language'>> = { 
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
       title: title.trim(), 
       category: effectiveCategory, 
     }
@@ -354,15 +287,10 @@ function EditModal({
     if (effectiveCategory === 'talks') {
       patch.topic = topic
     }
-    if (isNasheed) {
-      patch.language = language
-      patch.topic = language
-    }
     onSave(patch)
   }
 
   return (
-<<<<<<< HEAD
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm" 
       onClick={(e) => {
@@ -372,11 +300,8 @@ function EditModal({
         }
       }}
     >
-=======
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/30 backdrop-blur-sm" onClick={onClose}>
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
       <div
-        className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl border border-slate-200 w-full max-w-md p-5 sm:p-6 max-h-[92vh] overflow-y-auto"
+        className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
@@ -388,10 +313,8 @@ function EditModal({
           </button>
         </div>
 
-        <div className="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-500 min-w-0">
-          <span className="font-medium text-slate-600">File:</span>{' '}
-          <span className="break-all">{track.fileName}</span>
-          {' '}· {formatFileSize(track.fileSize)}
+        <div className="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-500">
+          <span className="font-medium text-slate-600">File:</span> {track.fileName} &nbsp;·&nbsp; {formatFileSize(track.fileSize)}
         </div>
 
         <form onSubmit={handleSave} className="space-y-4">
@@ -430,21 +353,6 @@ function EditModal({
               <p className="mt-1 text-xs text-slate-500">Will be saved as {formatCategoryLabel(customCategory.trim())}.</p>
             )}
           </div>
-
-          {(category === 'nasheeds' || category === 'kids-nasheeds') && (
-            <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Language *</label>
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value as 'arabic' | 'english' | 'urdu')}
-                className="w-full bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
-              >
-                <option value="arabic">العربية · Arabic</option>
-                <option value="english">English</option>
-                <option value="urdu">اردو · Urdu</option>
-              </select>
-            </div>
-          )}
 
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">
@@ -524,46 +432,29 @@ function EditModal({
 // ── Main Admin ─────────────────────────────────────────────────────────────
 export default function AdminPage() {
   const navigate = useNavigate()
-<<<<<<< HEAD
   const adminParams = new URLSearchParams(window.location.search)
   const nasheedBulkMode = adminParams.get('upload') === 'nasheeds'
   const requestedTab = adminParams.get('tab')
   const { user } = useAuth()
   const [authed, setAuthed] = useState(() => sessionStorage.getItem(SESSION_KEY) === '1')
   const { tracks, uploading, uploadError, uploadTrack, bulkUpload, deleteTrackById, editTrack, refresh } = useAudioLibrary()
-=======
-  const [authed, setAuthed] = useState(() => sessionStorage.getItem(SESSION_KEY) === '1')
-  const { tracks, loading, uploading, uploadError, uploadTrack, bulkUpload, deleteTrackById, editTrack, refresh } = useAudioLibrary()
-  const { currentTrack, isPlaying, playFromList, togglePlay } = useAudioPlayer()
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 
   // Edit modal state
   const [editingTrack, setEditingTrack] = useState<AudioTrack | null>(null)
 
-<<<<<<< HEAD
   // Move category modal state
   const [movingTrack, setMovingTrack] = useState<AudioTrack | null>(null)
   const [newCategory, setNewCategory] = useState<AudioCategory>('quran')
-=======
-  // Manage uploads filters
-  const [uploadSearch, setUploadSearch] = useState('')
-  const [uploadCategory, setUploadCategory] = useState<AudioCategory | 'all'>('all')
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 
   // Drafts
   const [drafts, setDrafts] = useState<RecordingDraft[]>([])
-  const [draftsLoading, setDraftsLoading] = useState(false)
-  const [draftsError, setDraftsError] = useState('')
   const [editingDraft, setEditingDraft] = useState<RecordingDraft | null>(null)
   const [draftEditTitle, setDraftEditTitle] = useState('')
   const [draftEditCategory, setDraftEditCategory] = useState<AudioCategory>('talks')
   const [draftEditReciter, setDraftEditReciter] = useState('')
   const [draftEditTopic, setDraftEditTopic] = useState('')
   const [savingDraftEdit, setSavingDraftEdit] = useState(false)
-  const [publishingDraftId, setPublishingDraftId] = useState<string | null>(null)
-  const draftUrlRef = useRef<Map<string, string>>(new Map())
 
-<<<<<<< HEAD
   const loadDrafts = useCallback(async () => { setDrafts(await getAllDrafts()) }, [])
   useEffect(() => { if (authed || user) loadDrafts() }, [authed, user, loadDrafts])
   useEffect(() => {
@@ -572,107 +463,6 @@ export default function AdminPage() {
       sessionStorage.setItem(SESSION_KEY, '1')
     }
   }, [user])
-=======
-  const loadDrafts = useCallback(async () => {
-    setDraftsLoading(true)
-    setDraftsError('')
-    try {
-      setDrafts(await getAllDrafts())
-    } catch (err: any) {
-      console.error('[Admin] Failed to load drafts', err)
-      setDraftsError(err?.message || 'Could not load local recording drafts.')
-      setDrafts([])
-    } finally {
-      setDraftsLoading(false)
-    }
-  }, [])
-  useEffect(() => { if (authed) loadDrafts() }, [authed, loadDrafts])
-
-  useEffect(() => {
-    return () => {
-      draftUrlRef.current.forEach((url) => URL.revokeObjectURL(url))
-      draftUrlRef.current.clear()
-    }
-  }, [])
-
-  const filteredUploads = useMemo(() => {
-    return tracks.filter((t) => {
-      const matchesCat = uploadCategory === 'all' || t.category === uploadCategory
-      const q = uploadSearch.trim().toLowerCase()
-      const matchesSearch = !q
-        || t.title.toLowerCase().includes(q)
-        || t.reciter.toLowerCase().includes(q)
-        || (t.fileName || '').toLowerCase().includes(q)
-      return matchesCat && matchesSearch
-    })
-  }, [tracks, uploadSearch, uploadCategory])
-
-  const kidsTracks = useMemo(
-    () => tracks.filter((t) =>
-      isKidsCategory(t.category)
-      || t.source === 'kids-studio'
-      || /for children|\(kids\)|for kids|learn the quran for children/i.test(t.title || '')
-    ),
-    [tracks]
-  )
-
-  const recordedUploads = useMemo(
-    () => tracks.filter(isRecordedTrack),
-    [tracks]
-  )
-
-  const playDraft = (draft: RecordingDraft) => {
-    let url = draftUrlRef.current.get(draft.id)
-    if (!url) {
-      url = URL.createObjectURL(draft.blob)
-      draftUrlRef.current.set(draft.id, url)
-    }
-    const track = draftToTrack(draft, url)
-    playFromList(track, [track], 0)
-  }
-
-  const openDraftInRecord = (draft: RecordingDraft) => {
-    sessionStorage.setItem(LOAD_DRAFT_KEY, draft.id)
-    navigate('/record')
-  }
-
-  const publishDraft = async (draft: RecordingDraft) => {
-    if (!draft.title.trim()) {
-      alert('Please set a title before publishing.')
-      return
-    }
-    const cat = (draft.category as AudioCategory) || 'talks'
-    const reciter = (draft.reciter || '').trim() || 'Unknown'
-    if (!confirm(`Publish "${draft.title}" to ${ALL_CATEGORIES_LIST.find((c) => c.value === cat)?.label || cat}?`)) return
-    setPublishingDraftId(draft.id)
-    try {
-      const ext = draft.blob.type.includes('wav') ? 'wav' : draft.blob.type.includes('mpeg') ? 'mp3' : 'webm'
-      const file = new File([draft.blob], `${draft.title.replace(/[^a-z0-9]+/gi, '_').slice(0, 40)}.${ext}`, {
-        type: draft.blob.type || 'audio/wav',
-      })
-      const isNasheed = cat === 'nasheeds' || cat === 'kids-nasheeds'
-      const ok = await uploadTrack(file, {
-        title: draft.title,
-        category: cat,
-        reciter,
-        topic: cat === 'talks' ? draft.topic : isNasheed ? 'english' : undefined,
-        language: isNasheed ? 'english' : undefined,
-      })
-      if (ok) {
-        await deleteDraft(draft.id)
-        await loadDrafts()
-        refresh()
-      } else {
-        alert('Publish failed. Please try again.')
-      }
-    } catch (err: any) {
-      console.error(err)
-      alert(err?.message || 'Publish failed.')
-    } finally {
-      setPublishingDraftId(null)
-    }
-  }
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 
   // Single upload state
   const [file, setFile] = useState<File | null>(null)
@@ -681,7 +471,6 @@ export default function AdminPage() {
   const [reciter, setReciter] = useState('')
   const [customReciter, setCustomReciter] = useState('')
   const [topic, setTopic] = useState('')
-  const [language, setLanguage] = useState<'arabic' | 'english' | 'urdu'>('arabic')
   const [textContent, setTextContent] = useState('')
   const [storyImage, setStoryImage] = useState<File | null>(null)
   const [storyImagePreviewUrl, setStoryImagePreviewUrl] = useState<string | null>(null)
@@ -708,14 +497,9 @@ export default function AdminPage() {
   const [bulkRows, setBulkRows] = useState<BulkRow[]>([])
   const [bulkResults, setBulkResults] = useState<BulkUploadResult[] | null>(null)
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null)
-<<<<<<< HEAD
   const [activeTab, setActiveTab] = useState<'single' | 'bulk' | 'youtube'>(
     requestedTab === 'youtube' ? 'youtube' : nasheedBulkMode ? 'bulk' : 'single',
   )
-=======
-  const [activeTab, setActiveTab] = useState<'single' | 'bulk'>('single')
-  const [adminSection, setAdminSection] = useState<'upload' | 'manage' | 'kids' | 'recorded' | 'drafts'>('manage')
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
   const bulkFileRef = useRef<HTMLInputElement>(null)
 
   const reciters = getRecitersForCategory(category)
@@ -762,12 +546,10 @@ export default function AdminPage() {
   const handleSingleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!file) return
-    const isNasheed = category === 'nasheeds' || category === 'kids-nasheeds'
     const ok = await uploadTrack(file, { 
       title, 
       category, 
       reciter: effectiveReciter, 
-<<<<<<< HEAD
       topic: category === 'talks' ? topic : category === 'dua' ? topic : undefined,
       text: supportsTextContent(category) ? textContent : undefined,
       imageFile: category === 'kids-stories' ? storyImage ?? undefined : undefined,
@@ -776,14 +558,6 @@ export default function AdminPage() {
     })
     if (ok) {
       setFile(null); setTitle(''); setCategory('quran'); setReciter(''); setCustomReciter(''); setTopic(''); setTextContent(''); setStoryImage(null)
-=======
-      topic: category === 'talks' ? topic : category === 'dua' ? topic : isNasheed ? language : undefined,
-      language: isNasheed ? language : undefined,
-      text: supportsTextContent(category) ? textContent : undefined
-    })
-    if (ok) {
-      setFile(null); setTitle(''); setCategory('quran'); setReciter(''); setCustomReciter(''); setTopic(''); setLanguage('arabic'); setTextContent('')
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
       setSuccess(true)
       if (singleFileRef.current) singleFileRef.current.value = ''
       if (storyImageFileRef.current) storyImageFileRef.current.value = ''
@@ -941,7 +715,6 @@ export default function AdminPage() {
 
   const totalSize = tracks.reduce((acc, t) => acc + t.fileSize, 0)
 
-<<<<<<< HEAD
   // ── Migration: Add views to existing tracks ─────────────────────────────
   const [migrating, setMigrating] = useState(false)
   const [migrationResult, setMigrationResult] = useState<string | null>(null)
@@ -1267,163 +1040,32 @@ export default function AdminPage() {
             {storageConfigMessage && <span className="text-sm text-emerald-700">{storageConfigMessage}</span>}
           </div>
         </form>
-=======
-  const adminSections = [
-    { id: 'manage' as const, label: 'Manage', short: 'Manage', icon: Search, count: tracks.length },
-    { id: 'kids' as const, label: 'Kids', short: 'Kids', icon: Star, count: kidsTracks.length },
-    { id: 'recorded' as const, label: 'Recorded', short: 'WAV', icon: Mic, count: recordedUploads.length },
-    { id: 'drafts' as const, label: 'Drafts', short: 'Drafts', icon: FolderOpen, count: drafts.length },
-    { id: 'upload' as const, label: 'Upload', short: 'Upload', icon: Upload, count: null },
-  ]
-
-  const goToSection = (id: typeof adminSection) => {
-    setAdminSection(id)
-    // Keep features reachable without scrolling back to the top
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  if (!authed) return <LoginGate onLogin={() => setAuthed(true)} />
-
-  return (
-    <div className="max-w-6xl mx-auto w-full min-w-0 px-3 sm:px-4 py-6 sm:py-10 pb-28 sm:pb-10 overflow-x-hidden">
-      {/* Header */}
-      <div className="flex items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6 min-w-0">
-        <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-violet-100 flex items-center justify-center shadow-sm shrink-0">
-            <Shield size={20} className="text-violet-600" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 truncate">Admin</h1>
-            <p className="text-slate-500 text-xs sm:text-sm truncate">
-              {tracks.length} tracks · {kidsTracks.length} kids · {formatFileSize(totalSize)}
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={() => { sessionStorage.removeItem(SESSION_KEY); setAuthed(false) }}
-          className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 text-sm transition-colors bg-white border border-slate-200 px-2.5 sm:px-3 py-2 rounded-lg hover:bg-slate-50 shrink-0"
-        >
-          <LogOut size={15} />
-          <span className="hidden sm:inline">Sign Out</span>
-        </button>
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
       </div>
 
-      {/* Sticky section nav — always visible on mobile */}
-      <div className="sticky top-16 z-30 -mx-3 sm:mx-0 mb-5 sm:mb-6 px-3 sm:px-0 py-2 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/80 sm:border-0 sm:bg-transparent sm:backdrop-blur-none sm:py-0">
-        {/* Mobile: compact 5-column icon grid */}
-        <div className="grid grid-cols-5 gap-1.5 sm:hidden">
-          {adminSections.map(({ id, short, icon: Icon, count }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => goToSection(id)}
-              className={`flex flex-col items-center justify-center gap-0.5 px-1 py-2 rounded-xl text-[10px] font-semibold transition-colors min-h-[3.25rem] ${
-                adminSection === id
-                  ? 'bg-violet-600 text-white shadow-sm'
-                  : 'bg-white text-slate-600 border border-slate-200'
-              }`}
-            >
-              <Icon size={16} />
-              <span className="leading-tight">{short}</span>
-              {count !== null && (
-                <span className={`text-[9px] px-1 rounded ${
-                  adminSection === id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
-                }`}>
-                  {count}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Desktop / tablet: horizontal pills */}
-        <div className="hidden sm:flex flex-wrap gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200">
-          {adminSections.map(({ id, label, icon: Icon, count }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => goToSection(id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                adminSection === id
-                  ? 'bg-white text-violet-700 shadow-sm border border-violet-200'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
-              }`}
-            >
-              <Icon size={15} />
-              {label}
-              {count !== null && (
-                <span className={`text-xs px-1.5 py-0.5 rounded-md ${
-                  adminSection === id ? 'bg-violet-100 text-violet-700' : 'bg-slate-200 text-slate-600'
-                }`}>
-                  {count}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Mobile bottom bar duplicate for one-thumb reach while deep in a list */}
-      <div className="sm:hidden fixed bottom-0 inset-x-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-md px-2 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(15,23,42,0.08)]">
-        <div className="grid grid-cols-5 gap-1 max-w-lg mx-auto">
-          {adminSections.map(({ id, short, icon: Icon, count }) => (
-            <button
-              key={`bottom-${id}`}
-              type="button"
-              onClick={() => goToSection(id)}
-              className={`flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-xl text-[10px] font-semibold transition-colors ${
-                adminSection === id
-                  ? 'bg-violet-600 text-white'
-                  : 'text-slate-500'
-              }`}
-            >
-              <Icon size={16} />
-              <span>{short}</span>
-              {count !== null && adminSection === id && (
-                <span className="sr-only">{count}</span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {adminSection === 'upload' && (
-      <div className="grid grid-cols-1 gap-8 max-w-2xl">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* ── Upload panel ────────────────────────────────────────────── */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm overflow-hidden min-w-0">
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
           {/* Tab switcher */}
-<<<<<<< HEAD
           <div className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
             <button
               onClick={() => setActiveTab('single')}
               className={`flex w-full items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-=======
-          <div className="grid grid-cols-2 gap-2 mb-5 w-full min-w-0">
-            <button
-              onClick={() => setActiveTab('single')}
-              className={`flex items-center justify-center gap-1.5 px-2 sm:px-4 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors min-w-0 ${
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
                 activeTab === 'single'
                   ? 'bg-violet-600 text-white shadow-sm'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              <Upload size={14} className="shrink-0" /> <span className="truncate">Single Upload</span>
+              <Upload size={14} /> Single Upload
             </button>
             <button
               onClick={() => setActiveTab('bulk')}
-<<<<<<< HEAD
               className={`flex w-full items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-=======
-              className={`flex items-center justify-center gap-1.5 px-2 sm:px-4 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors min-w-0 ${
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
                 activeTab === 'bulk'
                   ? 'bg-violet-600 text-white shadow-sm'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              <Layers size={14} className="shrink-0" /> <span className="truncate">Bulk Upload</span>
+              <Layers size={14} /> Bulk Upload
             </button>
             <button
               onClick={() => setActiveTab('youtube')}
@@ -1485,10 +1127,10 @@ export default function AdminPage() {
                     }}
                   >
                     {file ? (
-                      <div className="flex items-center gap-3 justify-center min-w-0 px-1">
-                        <FileAudio size={20} className="text-violet-500 shrink-0" />
-                        <div className="text-left min-w-0">
-                          <p className="text-sm text-slate-700 font-medium truncate">{file.name}</p>
+                      <div className="flex items-center gap-3 justify-center">
+                        <FileAudio size={20} className="text-violet-500" />
+                        <div className="text-left">
+                          <p className="text-sm text-slate-700 font-medium truncate max-w-xs">{file.name}</p>
                           <p className="text-xs text-slate-400">{formatFileSize(file.size)}</p>
                         </div>
                       </div>
@@ -1528,21 +1170,6 @@ export default function AdminPage() {
                     ))}
                   </select>
                 </div>
-
-                {(category === 'nasheeds' || category === 'kids-nasheeds') && (
-                  <div>
-                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Language *</label>
-                    <select
-                      value={language}
-                      onChange={(e) => setLanguage(e.target.value as 'arabic' | 'english' | 'urdu')}
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
-                    >
-                      <option value="arabic">العربية · Arabic</option>
-                      <option value="english">English</option>
-                      <option value="urdu">اردو · Urdu</option>
-                    </select>
-                  </div>
-                )}
 
                 <div>
                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">
@@ -2038,56 +1665,17 @@ export default function AdminPage() {
             )}
           </div>
         </div>
-      </div>
-      )}
 
-<<<<<<< HEAD
         {/* ── Manage uploads ───────────────────────────────────────────── */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm overflow-hidden lg:col-span-2">
           <h2 className="text-lg font-bold text-slate-800 mb-5">
             Manage Uploads
             <span className="ml-2 text-sm font-normal text-slate-400">({tracks.length})</span>
           </h2>
-=======
-      {adminSection === 'kids' && (
-        <div className="bg-white border border-amber-200 rounded-2xl p-4 sm:p-6 shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <Star size={20} className="text-amber-500" />
-              Kids Recordings
-              <span className="ml-1 text-sm font-normal text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                {kidsTracks.length}
-              </span>
-            </h2>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Link
-                to="/kids-recordings"
-                className="text-xs font-medium text-amber-700 hover:text-amber-900 px-3 py-1.5 border border-amber-200 bg-amber-50 rounded-lg"
-              >
-                Open Kids Audio
-              </Link>
-              <button
-                type="button"
-                onClick={() => refresh()}
-                className="text-xs text-slate-400 hover:text-slate-700 px-3 py-1 border border-slate-200 rounded-lg hover:bg-slate-50"
-              >
-                Refresh
-              </button>
-            </div>
-          </div>
-          <p className="text-xs text-slate-500 mb-4">
-            Kids Studio recordings go live on Kids Audio right away. Play or delete them here.
-          </p>
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 
-          {loading ? (
-            <div className="text-center py-10 text-slate-400 text-sm">Loading…</div>
-          ) : kidsTracks.length === 0 ? (
-            <div className="text-center py-10 text-slate-400 text-sm">
-              No kids recordings yet. Record one in Kids Studio.
-            </div>
+          {tracks.length === 0 ? (
+            <div className="text-center py-12 text-slate-400 text-sm">No uploads yet.</div>
           ) : (
-<<<<<<< HEAD
             <div className="space-y-2 max-h-[560px] overflow-y-auto pr-1">
               {tracks.map((track) => (
                 <div
@@ -2127,246 +1715,10 @@ export default function AdminPage() {
                   </div>
                 </div>
               ))}
-=======
-            <div className="space-y-2 max-h-[55vh] sm:max-h-[420px] overflow-y-auto pr-1">
-              {kidsTracks.map((track, index) => {
-                const isActive = currentTrack?.id === track.id
-                return (
-                  <div
-                    key={track.id}
-                    className={`flex items-center gap-2 sm:gap-3 border rounded-xl px-2.5 sm:px-4 py-3 transition-colors min-w-0 ${
-                      isActive ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-100'
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => playFromList(track, kidsTracks, index)}
-                      className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 shadow-sm transition-colors ${
-                        isActive ? 'bg-amber-500 text-white' : 'bg-white border border-slate-200 text-amber-600 hover:bg-amber-50'
-                      }`}
-                      title={isActive && isPlaying ? 'Pause' : 'Play'}
-                    >
-                      {isActive && isPlaying ? <Pause size={15} /> : <Play size={15} className="ml-0.5" />}
-                    </button>
-                    <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 text-sm shadow-sm hidden sm:flex">
-                      {categoryEmoji(track.category)}
-                    </div>
-                    <div className="min-w-0 flex-1 overflow-hidden">
-                      <p className={`text-sm font-medium truncate ${isActive ? 'text-amber-800' : 'text-slate-800'}`}>{track.title}</p>
-                      <p className="text-xs text-slate-400 truncate">
-                        {track.reciter} · {ALL_CATEGORIES_LIST.find((c) => c.value === track.category)?.label}
-                        {track.duration !== undefined ? ` · ${formatDuration(track.duration)}` : ''}
-                        {` · ${formatViews(track.views ?? 0)} views`}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setEditingTrack(track)}
-                      className="text-slate-400 hover:text-violet-500 transition-colors shrink-0 p-1.5 rounded-lg hover:bg-violet-50"
-                      title="Edit"
-                    >
-                      <Pencil size={15} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(track.id, track.title)}
-                      className="text-slate-400 hover:text-red-500 transition-colors shrink-0 p-1.5 rounded-lg hover:bg-red-50"
-                      title="Delete"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                )
-              })}
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
             </div>
           )}
         </div>
-      )}
-
-      {adminSection === 'recorded' && (
-        <div className="bg-white border border-violet-200 rounded-2xl p-4 sm:p-6 shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 min-w-0 flex-wrap">
-              <Mic size={20} className="text-violet-500 shrink-0" />
-              <span className="min-w-0">Recorded uploads</span>
-              <span className="text-sm font-normal text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full shrink-0">
-                {recordedUploads.length}
-              </span>
-            </h2>
-            <button
-              type="button"
-              onClick={() => refresh()}
-              className="text-xs text-slate-400 hover:text-slate-700 px-3 py-1 border border-slate-200 rounded-lg hover:bg-slate-50"
-            >
-              Refresh
-            </button>
-          </div>
-          <p className="text-xs text-slate-500 mb-4">
-            Audio captured with Record or Kids Studio. If a kids recording was uploaded under Talks/Quran,
-            edit it here and set category to Kids – Stories / Quran / Nasheeds.
-          </p>
-
-          {loading ? (
-            <div className="text-center py-10 text-slate-400 text-sm">Loading…</div>
-          ) : recordedUploads.length === 0 ? (
-            <div className="text-center py-10 text-slate-400 text-sm">
-              No recorded WAV/WebM uploads found yet.
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-[55vh] sm:max-h-[520px] overflow-y-auto pr-1">
-              {recordedUploads.map((track, index) => {
-                const isActive = currentTrack?.id === track.id
-                return (
-                  <div
-                    key={track.id}
-                    className={`flex items-center gap-2 sm:gap-3 border rounded-xl px-2.5 sm:px-4 py-3 transition-colors min-w-0 ${
-                      isActive ? 'bg-violet-50 border-violet-200' : 'bg-slate-50 border-slate-100'
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => playFromList(track, recordedUploads, index)}
-                      className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 shadow-sm transition-colors ${
-                        isActive ? 'bg-violet-600 text-white' : 'bg-white border border-slate-200 text-violet-600 hover:bg-violet-50'
-                      }`}
-                      title={isActive && isPlaying ? 'Pause' : 'Play'}
-                    >
-                      {isActive && isPlaying ? <Pause size={15} /> : <Play size={15} className="ml-0.5" />}
-                    </button>
-                    <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 items-center justify-center shrink-0 text-sm shadow-sm hidden sm:flex">
-                      {categoryEmoji(track.category)}
-                    </div>
-                    <div className="min-w-0 flex-1 overflow-hidden">
-                      <p className={`text-sm font-medium truncate ${isActive ? 'text-violet-700' : 'text-slate-800'}`}>{track.title}</p>
-                      <p className="text-xs text-slate-400 truncate">
-                        {track.reciter || '—'} · {ALL_CATEGORIES_LIST.find((c) => c.value === track.category)?.label}
-                        {track.source ? ` · ${track.source}` : ''}
-                        {` · ${formatViews(track.views ?? 0)} views`}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setEditingTrack(track)}
-                      className="text-slate-400 hover:text-violet-500 transition-colors shrink-0 p-1.5 rounded-lg hover:bg-violet-50"
-                      title="Edit category / details"
-                    >
-                      <Pencil size={15} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(track.id, track.title)}
-                      className="text-slate-400 hover:text-red-500 transition-colors shrink-0 p-1.5 rounded-lg hover:bg-red-50"
-                      title="Delete"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {adminSection === 'manage' && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-            <h2 className="text-lg font-bold text-slate-800">
-              Manage Uploads
-              <span className="ml-2 text-sm font-normal text-slate-400">({tracks.length})</span>
-            </h2>
-            <button
-              type="button"
-              onClick={() => refresh()}
-              className="text-xs text-slate-400 hover:text-slate-700 px-3 py-1 border border-slate-200 rounded-lg hover:bg-slate-50"
-            >
-              Refresh
-            </button>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-2 mb-4">
-            <div className="relative flex-1">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={uploadSearch}
-                onChange={(e) => setUploadSearch(e.target.value)}
-                placeholder="Search title, artist, file…"
-                className="w-full bg-slate-50 border border-slate-200 pl-9 pr-3 py-2 rounded-xl text-sm focus:outline-none focus:border-violet-400"
-              />
-            </div>
-            <select
-              value={uploadCategory}
-              onChange={(e) => setUploadCategory(e.target.value as AudioCategory | 'all')}
-              className="w-full sm:w-auto bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-violet-400"
-            >
-              <option value="all">All categories</option>
-              {ALL_CATEGORIES_LIST.map(({ value, label }) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
-          </div>
-
-          {loading ? (
-            <div className="text-center py-12 text-slate-400 text-sm">Loading uploads…</div>
-          ) : filteredUploads.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 text-sm">
-              {tracks.length === 0 ? 'No uploads yet.' : 'No uploads match your search.'}
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-[55vh] sm:max-h-[560px] overflow-y-auto pr-1">
-              {filteredUploads.map((track, index) => {
-                const isActive = currentTrack?.id === track.id
-                return (
-                  <div
-                    key={track.id}
-                    className={`flex items-center gap-2 sm:gap-3 border rounded-xl px-2.5 sm:px-4 py-3 transition-colors group min-w-0 ${
-                      isActive ? 'bg-violet-50 border-violet-200' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => playFromList(track, filteredUploads, index)}
-                      className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 shadow-sm transition-colors ${
-                        isActive ? 'bg-violet-600 text-white' : 'bg-white border border-slate-200 text-violet-600 hover:bg-violet-50'
-                      }`}
-                      title={isActive && isPlaying ? 'Pause' : 'Play'}
-                    >
-                      {isActive && isPlaying ? <Pause size={15} /> : <Play size={15} className="ml-0.5" />}
-                    </button>
-                    <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 items-center justify-center shrink-0 text-sm shadow-sm hidden sm:flex">
-                      {categoryEmoji(track.category)}
-                    </div>
-                    <div className="min-w-0 flex-1 overflow-hidden">
-                      <p className={`text-sm font-medium truncate ${isActive ? 'text-violet-700' : 'text-slate-800'}`}>{track.title}</p>
-                      <p className="text-xs text-slate-400 truncate">
-                        {track.reciter} · {ALL_CATEGORIES_LIST.find((c) => c.value === track.category)?.label}
-                        {track.language ? ` · ${String(track.language)}` : ''}
-                        {track.duration !== undefined ? ` · ${formatDuration(track.duration)}` : ''}
-                      </p>
-                    </div>
-                    <span className="text-xs text-slate-500 shrink-0 hidden sm:inline-flex items-center gap-1" title="Views">
-                      <Eye size={12} /> {formatViews(track.views ?? 0)}
-                    </span>
-                    <span className="text-xs text-slate-400 shrink-0 hidden sm:block">{formatFileSize(track.fileSize)}</span>
-                    <button
-                      onClick={() => setEditingTrack(track)}
-                      className="text-slate-400 hover:text-violet-500 transition-colors shrink-0 p-1.5 rounded-lg hover:bg-violet-50"
-                      title="Edit"
-                    >
-                      <Pencil size={15} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(track.id, track.title)}
-                      className="text-slate-400 hover:text-red-500 transition-colors shrink-0 p-1.5 rounded-lg hover:bg-red-50"
-                      title="Delete"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
+      </div>
 
       <AdminUserSubmissions />
       <AdminNasheedRequests />
@@ -2383,54 +1735,23 @@ export default function AdminPage() {
         />
       )}
 
-<<<<<<< HEAD
       {/* ── Drafts Section ── */}
       <div className="mt-8 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
         <div className="flex flex-col gap-3 mb-5 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
             <FolderOpen size={20} className="text-amber-500" /> Recording Drafts
-=======
-      {adminSection === 'drafts' && (
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-5 flex-wrap gap-3 min-w-0">
-          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 min-w-0">
-            <FolderOpen size={20} className="text-amber-500 shrink-0" /> Recording Drafts
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
             <span className="ml-1 text-sm font-normal text-slate-400">({drafts.length})</span>
           </h2>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Link
-              to="/record"
-              className="flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-800 px-3 py-1.5 border border-violet-200 bg-violet-50 rounded-lg"
-            >
-              <Mic size={13} /> Open Record page
-            </Link>
-            <button onClick={loadDrafts} className="text-xs text-slate-400 hover:text-slate-700 px-3 py-1 border border-slate-200 rounded-lg hover:bg-slate-50">Refresh</button>
-          </div>
+          <button onClick={loadDrafts} className="text-xs text-slate-400 hover:text-slate-700 px-3 py-1 border border-slate-200 rounded-lg hover:bg-slate-50">Refresh</button>
         </div>
 
-        {draftsError && (
-          <div className="mb-4 flex items-center gap-2 text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
-            <AlertCircle size={14} /> {draftsError}
-          </div>
-        )}
-
-        {draftsLoading ? (
-          <div className="text-center py-10 text-slate-400 text-sm">Loading drafts…</div>
-        ) : drafts.length === 0 ? (
+        {drafts.length === 0 ? (
           <div className="text-center py-10 text-slate-400 text-sm">
             <FolderOpen size={32} className="mx-auto mb-2 opacity-30" />
-            <p className="font-medium text-slate-500">No local drafts on this device</p>
-            <p className="mt-1 max-w-md mx-auto">
-              Drafts are saved in this browser only. Record on this device via the Record page, then return here to play, edit, or publish them.
-            </p>
-            <Link to="/record" className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700">
-              <Mic size={14} /> Go to Record
-            </Link>
+            No drafts saved yet. Use the Record page to save recordings as drafts.
           </div>
         ) : (
           <div className="space-y-2">
-<<<<<<< HEAD
             {drafts.map(draft => (
               <div key={draft.id} className="flex flex-col gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl hover:bg-amber-50 hover:border-amber-200 transition-colors group sm:flex-row sm:items-center">
                 <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center shrink-0 shadow-sm text-lg">🎙️</div>
@@ -2462,73 +1783,9 @@ export default function AdminPage() {
                 </div>
               </div>
             ))}
-=======
-            {drafts.map((draft) => {
-              const isActive = currentTrack?.id === `draft-${draft.id}`
-              return (
-                <div key={draft.id} className={`flex items-center gap-3 sm:gap-4 p-4 border rounded-xl transition-colors group ${
-                  isActive ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200 hover:bg-amber-50 hover:border-amber-200'
-                }`}>
-                  <button
-                    type="button"
-                    onClick={() => (isActive ? togglePlay() : playDraft(draft))}
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
-                      isActive ? 'bg-amber-500 text-white' : 'bg-white border border-slate-200 text-amber-600 hover:bg-amber-50'
-                    }`}
-                    title={isActive && isPlaying ? 'Pause' : 'Play recording'}
-                  >
-                    {isActive && isPlaying ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
-                  </button>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-slate-800 truncate">{draft.title}</p>
-                    <div className="flex flex-wrap items-center gap-3 mt-0.5 text-xs text-slate-400">
-                      <span className="flex items-center gap-1"><Clock size={11} /> {new Date(draft.savedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
-                      <span>{Math.floor(draft.duration / 60)}:{String(Math.floor(draft.duration % 60)).padStart(2, '0')}</span>
-                      {draft.category && <span className="capitalize bg-slate-100 px-2 py-0.5 rounded-full">{draft.category}</span>}
-                      {draft.reciter && <span className="truncate max-w-[120px]">{draft.reciter}</span>}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-wrap justify-end">
-                    <button
-                      type="button"
-                      onClick={() => openDraftInRecord(draft)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold rounded-lg"
-                      title="Open in Record page to edit audio"
-                    >
-                      <ChevronRight size={13} /> Edit audio
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => publishDraft(draft)}
-                      disabled={publishingDraftId === draft.id}
-                      className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 text-white text-xs font-semibold rounded-lg"
-                      title="Publish to library"
-                    >
-                      <Upload size={13} /> {publishingDraftId === draft.id ? '…' : 'Publish'}
-                    </button>
-                    <button
-                      onClick={() => { setEditingDraft(draft); setDraftEditTitle(draft.title); setDraftEditCategory((draft.category as AudioCategory) || 'talks'); setDraftEditReciter(draft.reciter || ''); setDraftEditTopic(draft.topic || '') }}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-slate-200 hover:border-violet-300 hover:bg-violet-50 text-slate-600 hover:text-violet-600 text-xs font-medium rounded-lg transition-colors"
-                      title="Edit draft metadata"
-                    >
-                      <Pencil size={13} /> Meta
-                    </button>
-                    <button
-                      onClick={async () => { if (!confirm(`Delete "${draft.title}"?`)) return; await deleteDraft(draft.id); loadDrafts() }}
-                      className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Delete draft"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
           </div>
         )}
       </div>
-      )}
 
       {/* Draft Edit Modal */}
       {editingDraft && (
@@ -2568,7 +1825,7 @@ export default function AdminPage() {
                 onClick={async () => {
                   setSavingDraftEdit(true)
                   const { saveDraft } = await import('../lib/indexedDb')
-                  await saveDraft({ ...editingDraft, title: draftEditTitle, category: draftEditCategory, reciter: draftEditReciter, topic: draftEditTopic, savedAt: Date.now() })
+                  await saveDraft({ ...editingDraft, title: draftEditTitle, category: draftEditCategory, reciter: draftEditReciter, topic: draftEditTopic })
                   await loadDrafts()
                   setEditingDraft(null)
                   setSavingDraftEdit(false)

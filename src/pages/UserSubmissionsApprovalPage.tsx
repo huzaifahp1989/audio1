@@ -350,6 +350,12 @@ export default function UserSubmissionsApprovalPage() {
                     {submission.reciter && (
                       <span className="text-slate-600">Artist/Speaker: {submission.reciter}</span>
                     )}
+                    {submission.topic && (
+                      <span className="text-slate-600">Topic: {submission.topic}</span>
+                    )}
+                    {submission.language && (
+                      <span className="text-slate-600">Language: {submission.language}</span>
+                    )}
                     <span className="flex items-center gap-1">
                       <User size={14} />
                       {submission.contributorName}

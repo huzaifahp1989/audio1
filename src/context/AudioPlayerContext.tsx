@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react'
 import type { AudioTrack } from '../types'
-<<<<<<< HEAD
 import { incrementTrackViews } from '../lib/views'
 import { getAllAdAudioTracks, incrementAdAudioHeardCount } from '../lib/storage'
 import { buildAutoPlaylistSelection, setAdminAdAudioTracks } from '../lib/playlistQueue'
@@ -13,21 +12,6 @@ import { publishAndroidAutoLibrary } from '../lib/androidAuto'
 const PLAYLIST_STORAGE_KEY = 'audio-player-saved-playlists'
 
 export type SleepTimerOption = 15 | 30 | 60 | 'end'
-=======
-import { useAudioLibrary } from '../hooks/useAudioLibrary'
-import {
-  adsEnabledByDefault,
-  createAdTrack,
-  isAdTrack,
-  randomAdInterval,
-} from '../lib/playbackAds'
-import {
-  bindMediaSessionHandlers,
-  setMediaSessionPlaybackState,
-  updateMediaSessionMetadata,
-  updateMediaSessionPosition,
-} from '../lib/mediaSession'
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 
 interface PlayerState {
   currentTrack: AudioTrack | null
@@ -41,45 +25,31 @@ interface PlayerState {
   playlistIndex: number
   hasNext: boolean
   hasPrev: boolean
-<<<<<<< HEAD
   hasNextSponsored: boolean
+  isAdPlaying: boolean
   activePlaylistName: string | null
   savedPlaylists: Record<string, AudioTrack[]>
   sleepTimer: SleepTimerOption | null
   sleepEndsAt: number | null
-=======
-  /** True while a sponsored interstitial is playing */
-  isAdPlaying: boolean
-  /** Continuous / car mode: wrap playlist and keep going */
-  continuousPlay: boolean
-  adsEnabled: boolean
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
   play: (track: AudioTrack) => void
   playFromList: (track: AudioTrack, tracks: AudioTrack[], index: number) => void
   playNext: () => void
   playPrev: () => void
   skipTracks: (count: number) => void
   jumpToNextSponsored: () => void
+  skipAd: () => void
   togglePlay: () => void
   seek: (time: number) => void
   setVolume: (vol: number) => void
   setPlaybackRate: (rate: number) => void
   setSleepTimer: (option: SleepTimerOption | null) => void
   stopTrack: () => void
-<<<<<<< HEAD
   addTrackToPlaylist: (track: AudioTrack) => void
   removeTrackFromPlaylist: (trackId: string) => void
   clearPlaylist: () => void
   savePlaylist: (name: string) => void
   loadPlaylist: (name: string) => void
   deletePlaylist: (name: string) => void
-=======
-  skipAd: () => void
-  setContinuousPlay: (on: boolean) => void
-  setAdsEnabled: (on: boolean) => void
-  /** Start a category queue for car / continuous listening */
-  startQueue: (tracks: AudioTrack[], startIndex?: number, opts?: { continuous?: boolean }) => void
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 }
 
 const AudioPlayerContext = createContext<PlayerState | null>(null)
@@ -87,7 +57,6 @@ const AudioPlayerContext = createContext<PlayerState | null>(null)
 export function AudioPlayerProvider({ children }: { children: React.ReactNode }) {
   const { incrementTrackView, tracks } = useAudioLibrary()
   const audioRef = useRef<HTMLAudioElement>(new Audio())
-  const { recordTrackView } = useAudioLibrary()
 
   const [currentTrack, setCurrentTrack] = useState<AudioTrack | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -96,9 +65,10 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const [volume, setVolumeState] = useState(1)
   const [playbackRate, setPlaybackRateState] = useState(1)
   const [audioError, setAudioError] = useState<string | null>(null)
+  const isAdPlaying = false
+  const skipAd = useCallback(() => {}, [])
   const [playlist, setPlaylist] = useState<AudioTrack[]>([])
   const [playlistIndex, setPlaylistIndex] = useState(-1)
-<<<<<<< HEAD
   const [activePlaylistName, setActivePlaylistName] = useState<string | null>(null)
   const [savedPlaylists, setSavedPlaylists] = useState<Record<string, AudioTrack[]>>({})
   const [sleepTimer, setSleepTimerState] = useState<SleepTimerOption | null>(null)
@@ -238,43 +208,8 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const playPrevRef = useRef<() => void>(() => {})
   const playFromListRef = useRef<(track: AudioTrack, tracks: AudioTrack[], index: number) => void>(() => {})
   const playNextAutoRef = useRef<() => void>(() => {})
-=======
-  const [isAdPlaying, setIsAdPlaying] = useState(false)
-  const [continuousPlay, setContinuousPlayState] = useState(false)
-  const [adsEnabled, setAdsEnabledState] = useState(() => adsEnabledByDefault())
 
-  const playlistRef = useRef<AudioTrack[]>([])
-  const playlistIndexRef = useRef(-1)
-  const continuousPlayRef = useRef(false)
-  const adsEnabledRef = useRef(adsEnabled)
-  const tracksSinceAdRef = useRef(0)
-  const nextAdAtRef = useRef(randomAdInterval())
-  const isAdRef = useRef(false)
-  const pendingAfterAdIndexRef = useRef<number | null>(null)
-  const volumeRef = useRef(volume)
-  const currentTrackRef = useRef<AudioTrack | null>(null)
-
-  useEffect(() => { playlistRef.current = playlist }, [playlist])
-  useEffect(() => { playlistIndexRef.current = playlistIndex }, [playlistIndex])
-  useEffect(() => { continuousPlayRef.current = continuousPlay }, [continuousPlay])
-  useEffect(() => { adsEnabledRef.current = adsEnabled }, [adsEnabled])
-  useEffect(() => { volumeRef.current = volume }, [volume])
-  useEffect(() => { currentTrackRef.current = currentTrack }, [currentTrack])
-
-  const hasNext =
-    continuousPlay
-      ? playlist.length > 0
-      : playlistIndex >= 0 && playlistIndex < playlist.length - 1
-  const hasPrev =
-    continuousPlay
-      ? playlist.length > 0
-      : playlistIndex > 0
-
-  const playNextRef = useRef<() => void>(() => {})
-  const playPrevRef = useRef<() => void>(() => {})
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
-
-  const _playTrack = useCallback(async (track: AudioTrack, opts?: { asAd?: boolean }) => {
+  const _playTrack = useCallback(async (track: AudioTrack) => {
     const audio = audioRef.current
     audio.pause()
     audio.src = ''
@@ -285,7 +220,6 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       return
     }
 
-<<<<<<< HEAD
     setAudioError(null)
     audio.src = audioUrl
     audio.volume = volume
@@ -342,124 +276,10 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     } catch { /* ignore */ }
     await audio.play()
   }, [volume, playbackRate, incrementTrackView])
-=======
-    const asAd = !!opts?.asAd || isAdTrack(track)
-    isAdRef.current = asAd
-    setIsAdPlaying(asAd)
-
-    audio.src = audioUrl
-    audio.volume = volumeRef.current
-    setCurrentTrack(asAd ? track : { ...track, views: (track.views || 0) + 1 })
-    setCurrentTime(0)
-    setDuration(0)
-    if (!asAd) {
-      recordTrackView(track.id)
-    }
-    updateMediaSessionMetadata(track)
-    try {
-      await audio.play()
-    } catch (err) {
-      console.error('[Player] play failed', err)
-    }
-  }, [recordTrackView])
-
-  const advanceToContentIndex = useCallback((nextIndex: number) => {
-    const list = playlistRef.current
-    if (!list.length) return
-    let idx = nextIndex
-    if (continuousPlayRef.current) {
-      idx = ((idx % list.length) + list.length) % list.length
-    } else if (idx < 0 || idx >= list.length) {
-      return
-    }
-    const nextTrack = list[idx]
-    setPlaylistIndex(idx)
-    playlistIndexRef.current = idx
-    void _playTrack(nextTrack)
-  }, [_playTrack])
-
-  const playAdThen = useCallback((resumeIndex: number) => {
-    pendingAfterAdIndexRef.current = resumeIndex
-    tracksSinceAdRef.current = 0
-    nextAdAtRef.current = randomAdInterval()
-    void _playTrack(createAdTrack(), { asAd: true })
-  }, [_playTrack])
-
-  const playNext = useCallback(() => {
-    const list = playlistRef.current
-    if (!list.length) return
-
-    // Leaving an ad → resume queued content
-    if (isAdRef.current) {
-      const resume = pendingAfterAdIndexRef.current
-      pendingAfterAdIndexRef.current = null
-      isAdRef.current = false
-      setIsAdPlaying(false)
-      if (resume !== null) {
-        advanceToContentIndex(resume)
-      }
-      return
-    }
-
-    const cur = playlistIndexRef.current
-    let nextIndex = cur + 1
-    if (nextIndex >= list.length) {
-      if (continuousPlayRef.current) nextIndex = 0
-      else return
-    }
-
-    // Count finished/skipped content tracks toward ad interval
-    tracksSinceAdRef.current += 1
-    if (adsEnabledRef.current && tracksSinceAdRef.current >= nextAdAtRef.current) {
-      playAdThen(nextIndex)
-      return
-    }
-
-    advanceToContentIndex(nextIndex)
-  }, [advanceToContentIndex, playAdThen])
-
-  const playPrev = useCallback(() => {
-    const list = playlistRef.current
-    if (!list.length) return
-
-    if (isAdRef.current) {
-      // Skip ad backward → play previous content (or restart current queue item)
-      pendingAfterAdIndexRef.current = null
-      isAdRef.current = false
-      setIsAdPlaying(false)
-      const cur = playlistIndexRef.current
-      advanceToContentIndex(cur >= 0 ? cur : 0)
-      return
-    }
-
-    const audio = audioRef.current
-    // Car UX: if >3s into track, restart; else previous
-    if (audio.currentTime > 3) {
-      audio.currentTime = 0
-      setCurrentTime(0)
-      return
-    }
-
-    let prevIndex = playlistIndexRef.current - 1
-    if (prevIndex < 0) {
-      if (continuousPlayRef.current) prevIndex = list.length - 1
-      else return
-    }
-    advanceToContentIndex(prevIndex)
-  }, [advanceToContentIndex])
-
-  useEffect(() => {
-    playNextRef.current = playNext
-  }, [playNext])
-  useEffect(() => {
-    playPrevRef.current = playPrev
-  }, [playPrev])
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 
   useEffect(() => {
     const audio = audioRef.current
 
-<<<<<<< HEAD
     const readFiniteDuration = () => {
       const d = audio.duration
       return Number.isFinite(d) && d > 0 ? d : 0
@@ -526,13 +346,6 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
         resumeTargetRef.current = 0
       }
     }
-=======
-    const onTimeUpdate = () => {
-      setCurrentTime(audio.currentTime)
-      updateMediaSessionPosition(audio.currentTime, audio.duration || 0)
-    }
-    const onDurationChange = () => setDuration(audio.duration || 0)
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
     const onEnded = () => {
       setIsPlaying(false)
       wasPlayingRef.current = false
@@ -595,17 +408,6 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       wasPlayingRef.current = false
       trackAudioError(currentTrackRef.current?.id, msg)
     }
-<<<<<<< HEAD
-=======
-    const onPlay = () => {
-      setIsPlaying(true)
-      setMediaSessionPlaybackState(true)
-    }
-    const onPause = () => {
-      setIsPlaying(false)
-      setMediaSessionPlaybackState(false)
-    }
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 
     audio.addEventListener('timeupdate', onTimeUpdate)
     audio.addEventListener('durationchange', onDurationChange)
@@ -631,48 +433,24 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     }
   }, [])
 
-  // Media Session handlers for Android Auto / Bluetooth / lock screen
-  useEffect(() => {
-    const audio = audioRef.current
-    return bindMediaSessionHandlers({
-      play: () => { void audio.play() },
-      pause: () => { audio.pause() },
-      playNext: () => playNextRef.current(),
-      playPrev: () => playPrevRef.current(),
-      seek: (time) => {
-        audio.currentTime = time
-        setCurrentTime(time)
-      },
-      getPosition: () => ({
-        position: audio.currentTime || 0,
-        duration: audio.duration || 0,
-        playbackRate: 1,
-      }),
-    })
-  }, [])
-
-  useEffect(() => {
-    if (currentTrack) updateMediaSessionMetadata(currentTrack)
-  }, [currentTrack])
-
   const play = useCallback(async (track: AudioTrack) => {
     const audio = audioRef.current
-    if (currentTrackRef.current?.id === track.id && !isAdRef.current) {
-      if (audio.paused) await audio.play()
-      else audio.pause()
+
+    // Same track — just toggle
+    if (currentTrack?.id === track.id) {
+      if (audio.paused) {
+        await audio.play()
+      } else {
+        audio.pause()
+      }
       return
     }
-    // Single-track play: set one-item playlist so next/prev still work in continuous mode
-    setPlaylist([track])
-    setPlaylistIndex(0)
-    playlistRef.current = [track]
-    playlistIndexRef.current = 0
+
     await _playTrack(track)
-  }, [_playTrack])
+  }, [currentTrack, _playTrack])
 
   const playFromList = useCallback(async (track: AudioTrack, tracks: AudioTrack[], index: number) => {
     const audio = audioRef.current
-<<<<<<< HEAD
     const { queue, queueIndex } = buildAutoPlaylistSelection(track, tracks, index)
     const selectedTrack = queue[queueIndex] ?? track
 
@@ -693,36 +471,14 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     setPlaylistIndex(queueIndex)
     await _playTrack(selectedTrack)
   }, [currentTrack, _playTrack])
-=======
-    if (currentTrackRef.current?.id === track.id && !isAdRef.current) {
-      if (audio.paused) await audio.play()
-      else audio.pause()
-      setPlaylist(tracks)
-      setPlaylistIndex(index)
-      playlistRef.current = tracks
-      playlistIndexRef.current = index
-      return
-    }
 
-    setPlaylist(tracks)
-    setPlaylistIndex(index)
-    playlistRef.current = tracks
-    playlistIndexRef.current = index
-    await _playTrack(track)
-  }, [_playTrack])
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
-
-  const startQueue = useCallback((tracks: AudioTrack[], startIndex = 0, opts?: { continuous?: boolean }) => {
-    if (!tracks.length) return
-    const idx = Math.min(Math.max(0, startIndex), tracks.length - 1)
-    if (opts?.continuous !== undefined) {
-      setContinuousPlayState(opts.continuous)
-      continuousPlayRef.current = opts.continuous
-    } else {
-      setContinuousPlayState(true)
-      continuousPlayRef.current = true
+  const playNext = useCallback(() => {
+    if (playlistIndex >= 0 && playlistIndex < playlist.length - 1) {
+      const nextIndex = playlistIndex + 1
+      const nextTrack = playlist[nextIndex]
+      setPlaylistIndex(nextIndex)
+      _playTrack(nextTrack)
     }
-<<<<<<< HEAD
   }, [playlist, playlistIndex, _playTrack])
 
   const skipTracks = useCallback((count: number) => {
@@ -792,16 +548,6 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     playNextRef.current = playNext
   }, [playNext])
-=======
-    tracksSinceAdRef.current = 0
-    nextAdAtRef.current = randomAdInterval()
-    setPlaylist(tracks)
-    setPlaylistIndex(idx)
-    playlistRef.current = tracks
-    playlistIndexRef.current = idx
-    void _playTrack(tracks[idx])
-  }, [_playTrack])
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 
   useEffect(() => {
     playNextAutoRef.current = playNextAuto
@@ -817,12 +563,14 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current
-    if (audio.paused) void audio.play()
-    else audio.pause()
+    if (audio.paused) {
+      audio.play()
+    } else {
+      audio.pause()
+    }
   }, [])
 
   const seek = useCallback((time: number) => {
-    if (isAdRef.current) return // don't seek ads mid-roll awkwardly from UI; Media Session still can
     const audio = audioRef.current
     const dur = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : duration
     const clamped = Math.max(0, dur > 0 ? Math.min(time, dur) : time)
@@ -994,57 +742,21 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     setIsPlaying(false)
     setPlaylist([])
     setPlaylistIndex(-1)
-<<<<<<< HEAD
     setActivePlaylistName(null)
-=======
-    setIsAdPlaying(false)
-    isAdRef.current = false
-    pendingAfterAdIndexRef.current = null
-    playlistRef.current = []
-    playlistIndexRef.current = -1
-    setMediaSessionPlaybackState(false)
-  }, [])
-
-  const skipAd = useCallback(() => {
-    if (!isAdRef.current) return
-    playNext()
-  }, [playNext])
-
-  const setContinuousPlay = useCallback((on: boolean) => {
-    continuousPlayRef.current = on
-    setContinuousPlayState(on)
-  }, [])
-
-  const setAdsEnabled = useCallback((on: boolean) => {
-    adsEnabledRef.current = on
-    setAdsEnabledState(on)
-    try {
-      if (on) localStorage.removeItem('disable_playback_ads')
-      else localStorage.setItem('disable_playback_ads', '1')
-    } catch { /* ignore */ }
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
   }, [])
 
   return (
     <AudioPlayerContext.Provider
       value={{
-<<<<<<< HEAD
         currentTrack, isPlaying, currentTime, duration, volume, playbackRate, audioError,
         playlist, playlistIndex, hasNext, hasPrev, hasNextSponsored,
+        isAdPlaying,
         activePlaylistName, savedPlaylists,
         sleepTimer, sleepEndsAt,
-        play, playFromList, playNext, playPrev, skipTracks, jumpToNextSponsored,
+        play, playFromList, playNext, playPrev, skipTracks, jumpToNextSponsored, skipAd,
         togglePlay, seek, setVolume, setPlaybackRate, setSleepTimer, stopTrack,
         addTrackToPlaylist, removeTrackFromPlaylist, clearPlaylist,
         savePlaylist, loadPlaylist, deletePlaylist,
-=======
-        currentTrack, isPlaying, currentTime, duration, volume,
-        playlist, playlistIndex, hasNext, hasPrev,
-        isAdPlaying, continuousPlay, adsEnabled,
-        play, playFromList, playNext, playPrev,
-        togglePlay, seek, setVolume, stopTrack,
-        skipAd, setContinuousPlay, setAdsEnabled, startQueue,
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
       }}
     >
       {children}

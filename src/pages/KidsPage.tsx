@@ -127,7 +127,7 @@ export default function KidsPage() {
   )
 
   const langCounts = useMemo(() => {
-    const c = { all: kidsNasheedTracks.length, arabic: 0, english: 0, urdu: 0 }
+    const c = { all: kidsNasheedTracks.length, arabic: 0, english: 0, urdu: 0, other: 0 }
     for (const t of kidsNasheedTracks) c[getKidsLanguage(t)]++
     return c
   }, [kidsNasheedTracks])

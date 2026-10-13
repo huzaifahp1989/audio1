@@ -90,14 +90,14 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10">
+    <div className="mx-auto w-full max-w-7xl px-3 py-6 sm:px-4 sm:py-10">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <div className="w-12 h-12 rounded-xl bg-violet-100 flex items-center justify-center shadow-sm">
+      <div className="mb-6 flex items-center gap-3 sm:mb-8 sm:gap-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 shadow-sm sm:h-12 sm:w-12">
           <BarChart3 size={22} className="text-violet-600" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Analytics Dashboard</h1>
+          <h1 className="text-xl font-bold text-slate-800 sm:text-2xl">Analytics Dashboard</h1>
           <p className="text-slate-500 text-sm mt-0.5">Real-time listening statistics</p>
         </div>
       </div>
@@ -131,9 +131,9 @@ export default function AnalyticsPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2 lg:gap-8">
         {/* Top Tracks */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <div className="flex items-center gap-2 mb-6">
             <TrendingUp size={20} className="text-violet-500" />
             <h2 className="text-lg font-bold text-slate-800">Top 10 Most Played</h2>
@@ -168,7 +168,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Category Breakdown */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <div className="flex items-center gap-2 mb-6">
             <Eye size={20} className="text-emerald-500" />
             <h2 className="text-lg font-bold text-slate-800">Plays by Category</h2>

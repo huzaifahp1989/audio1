@@ -7,58 +7,57 @@
   :root,
   [data-theme="light"] {
     color-scheme: light;
-    --theme-bg: #eef5ff;
-    --theme-surface: #f8fbff;
+    --theme-bg: #f8fafc;
+    --theme-surface: #ffffff;
     --theme-surface-2: #ffffff;
-    --theme-ink: #14243d;
-    --theme-muted: #5b6b86;
-    --theme-brand: #1d4ed8;
-    --theme-brand-2: #0ea5e9;
-    --theme-border: #d6e6ff;
-    --theme-soft: #e9f2ff;
-    --theme-ring: rgba(29, 78, 216, 0.35);
-    --theme-shadow: rgba(15, 23, 42, 0.08);
-    --grid-line: rgba(37, 99, 235, 0.06);
-    --glow: rgba(37, 99, 235, 0.2);
-    --scroll-thumb: #1d4ed8;
-    --scroll-track: #dbeafe;
+    --theme-ink: #0f172a;
+    --theme-muted: #64748b;
+    --theme-brand: #059669;
+    --theme-brand-2: #10b981;
+    --theme-border: #e2e8f0;
+    --theme-soft: #f1f5f9;
+    --theme-ring: rgba(16, 185, 129, 0.3);
+    --theme-shadow: rgba(15, 23, 42, 0.05);
+    --grid-line: rgba(15, 23, 42, 0.03);
+    --glow: rgba(16, 185, 129, 0.12);
+    --scroll-thumb: #cbd5e1;
+    --scroll-track: #f1f5f9;
   }
 
   [data-theme="dark"] {
     color-scheme: dark;
-    --theme-bg: #070d1a;
-    --theme-surface: #111a2e;
-    --theme-surface-2: #16223c;
-    --theme-ink: #e7eefb;
-    --theme-muted: #94a6c4;
-    --theme-brand: #3b82f6;
-    --theme-brand-2: #38bdf8;
-    --theme-border: #24324d;
-    --theme-soft: #1a2740;
-    --theme-ring: rgba(59, 130, 246, 0.45);
-    --theme-shadow: rgba(0, 0, 0, 0.5);
-    --grid-line: rgba(96, 165, 250, 0.07);
-    --glow: rgba(59, 130, 246, 0.22);
-    --scroll-thumb: #3b82f6;
-    --scroll-track: #1a2740;
+    --theme-bg: #090d16;
+    --theme-surface: #0f172a;
+    --theme-surface-2: #141f36;
+    --theme-ink: #f8fafc;
+    --theme-muted: #94a3b8;
+    --theme-brand: #10b981;
+    --theme-brand-2: #34d399;
+    --theme-border: #1e293b;
+    --theme-soft: #1e293b;
+    --theme-ring: rgba(16, 185, 129, 0.4);
+    --theme-shadow: rgba(0, 0, 0, 0.6);
+    --grid-line: rgba(255, 255, 255, 0.03);
+    --glow: rgba(16, 185, 129, 0.15);
+    --scroll-thumb: #334155;
+    --scroll-track: #0f172a;
   }
 
   body {
-<<<<<<< HEAD
     background-color: var(--theme-bg);
     color: var(--theme-ink);
-    font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     background-image:
-      radial-gradient(circle at 14% 20%, var(--glow) 0%, rgba(29, 78, 216, 0) 40%),
-      radial-gradient(circle at 85% 14%, var(--glow) 0%, rgba(14, 165, 233, 0) 42%);
+      radial-gradient(circle at 14% 15%, var(--glow) 0%, transparent 45%),
+      radial-gradient(circle at 85% 10%, rgba(14, 165, 233, 0.08) 0%, transparent 40%);
     min-height: 100vh;
-    transition: background-color 0.3s ease, color 0.3s ease;
-=======
-    background-color: #f8fafc;
-    color: #0f172a;
-    font-family: 'Segoe UI', system-ui, sans-serif;
     overflow-x: hidden;
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  html {
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
   }
 
   * {
@@ -101,6 +100,36 @@
   *::-webkit-scrollbar-thumb {
     background-color: var(--scroll-thumb);
     border-radius: 3px;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  img,
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-shell main {
+    padding-bottom: calc(2rem + env(safe-area-inset-bottom));
+  }
+
+  .app-shell main > div:not(.flex) {
+    min-width: 0;
+  }
+
+  .surface-card,
+  .surface-panel {
+    min-width: 0;
   }
 }
 
@@ -358,6 +387,31 @@ input[type='range']:not(.seek-bar-input)::-moz-range-thumb {
   animation-play-state: paused;
 }
 
+.now-playing-marquee {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.now-playing-marquee-track {
+  display: flex;
+  width: max-content;
+  transform: translateX(0);
+}
+
+.now-playing-marquee-track > span {
+  flex: 0 0 auto;
+  padding-right: 2rem;
+}
+
+.now-playing-marquee-track.is-playing {
+  animation: now-playing-marquee 18s linear infinite;
+}
+
+@keyframes now-playing-marquee {
+  to { transform: translateX(-50%); }
+}
+
 /* Command palette / modal entrance */
 .modal-pop {
   animation: modal-pop 200ms ease-out both;
@@ -375,7 +429,8 @@ input[type='range']:not(.seek-bar-input)::-moz-range-thumb {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ads-marquee-track {
+  .ads-marquee-track,
+  .now-playing-marquee-track {
     animation: none;
     transform: none;
   }

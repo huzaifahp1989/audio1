@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Upload, X, UserPlus, ShieldCheck } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useAuthModal } from '../context/AuthModalContext'
 
@@ -90,6 +91,14 @@ export default function ContributorUploadNotice({ variant, className = '' }: Con
               <UserPlus size={15} />
               Sign up to upload
             </button>
+          )}
+          {user && (
+            <Link
+              to="/my-submissions"
+              className={`mt-3 inline-flex items-center gap-2 rounded-xl ${theme.button} px-4 py-2 text-xs font-semibold text-white shadow-sm sm:text-sm`}
+            >
+              View my submissions
+            </Link>
           )}
         </div>
       </div>

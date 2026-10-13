@@ -1,31 +1,34 @@
-import { put } from '@vercel/blob'
-import formidable from 'formidable'
-import fs from 'node:fs/promises'
+import { handleUpload } from '@vercel/blob/client'
 
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024
+const AUDIO_FOLDERS = new Set(['audio', 'user-submissions', 'ads'])
 
-function parseForm(req) {
-	const form = formidable({
-		multiples: false,
-		maxFileSize: MAX_FILE_SIZE_BYTES,
-		keepExtensions: true,
-	})
-
-	return new Promise((resolve, reject) => {
-		form.parse(req, (err, fields, files) => {
-			if (err) {
-				reject(err)
-				return
-			}
-			resolve({ fields, files })
-		})
-	})
-}
+class InvalidUploadPathError extends Error {}
 
 function json(res, status, payload) {
 	res.statusCode = status
 	res.setHeader('Content-Type', 'application/json')
 	res.end(JSON.stringify(payload))
+}
+
+function parseBody(req) {
+	if (req.body && typeof req.body === 'object') return req.body
+	if (typeof req.body === 'string') return JSON.parse(req.body)
+	return {}
+}
+
+function validateUploadPath(pathname) {
+	const parts = pathname.split('/')
+	if (parts.length < 2 || parts.some((part) => !part || part === '.' || part === '..' || part.includes('\\'))) {
+		throw new InvalidUploadPathError('Invalid upload path.')
+	}
+
+	const [folder] = parts
+	if (!AUDIO_FOLDERS.has(folder) && folder !== 'images') {
+		throw new InvalidUploadPathError('Uploads must use an approved audio or image folder.')
+	}
+
+	return folder === 'images' ? ['image/*'] : ['audio/*']
 }
 
 export default async function handler(req, res) {
@@ -35,33 +38,18 @@ export default async function handler(req, res) {
 	}
 
 	try {
-		const { fields, files } = await parseForm(req)
-		const uploaded = Array.isArray(files.file) ? files.file[0] : files.file
-
-		if (!uploaded) {
-			return json(res, 400, { success: false, error: 'No file provided. Use field name "file".' })
-		}
-
-		const folder = typeof fields.folder === 'string' && fields.folder.trim() ? fields.folder.trim() : 'uploads'
-		const safeName = uploaded.originalFilename || uploaded.newFilename || 'upload.bin'
-		const pathname = `${folder}/${Date.now()}-${safeName}`
-
-		const fileBuffer = await fs.readFile(uploaded.filepath)
-		const blob = await put(pathname, fileBuffer, {
-			access: 'public',
-			addRandomSuffix: true,
-			contentType: uploaded.mimetype || 'application/octet-stream',
+		const result = await handleUpload({
+			body: parseBody(req),
+			request: req,
+			onBeforeGenerateToken: async (pathname) => ({
+				allowedContentTypes: validateUploadPath(pathname),
+				maximumSizeInBytes: MAX_FILE_SIZE_BYTES,
+				addRandomSuffix: true,
+			}),
 		})
-
-		return json(res, 200, {
-			success: true,
-			url: blob.url,
-			pathname: blob.pathname,
-			size: uploaded.size,
-			contentType: uploaded.mimetype || null,
-		})
+		return json(res, 200, result)
 	} catch (error) {
-		return json(res, 500, {
+		return json(res, error instanceof InvalidUploadPathError ? 400 : 500, {
 			success: false,
 			error: error?.message || 'Upload failed',
 		})

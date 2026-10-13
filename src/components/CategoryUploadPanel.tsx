@@ -181,10 +181,9 @@ export default function CategoryUploadPanel({ category, className = '' }: Catego
   const [customReciter, setCustomReciter] = useState('')
 
   const [topic, setTopic] = useState('')
-
   const [success, setSuccess] = useState(false)
-
   const [localError, setLocalError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
 
 
@@ -297,17 +296,12 @@ export default function CategoryUploadPanel({ category, className = '' }: Catego
     }
 
     if (needsTopic(category) && !topic) {
-
       setLocalError('Please select a topic/category.')
-
       return
-
     }
 
-
-
+    setIsSubmitting(true)
     try {
-
       if (needsApproval) {
 
         const contributorName = profile?.full_name || user.email?.split('@')[0] || 'Contributor'
@@ -417,13 +411,11 @@ export default function CategoryUploadPanel({ category, className = '' }: Catego
       }
 
     } catch (err: unknown) {
-
       console.error('[CategoryUploadPanel]', err)
-
       setLocalError(err instanceof Error ? err.message : 'Upload failed. Try again.')
-
+    } finally {
+      setIsSubmitting(false)
     }
-
   }
 
 
@@ -646,13 +638,13 @@ export default function CategoryUploadPanel({ category, className = '' }: Catego
 
               type="submit"
 
-              disabled={uploading}
+              disabled={uploading || isSubmitting}
 
               className="rounded-xl bg-gradient-to-r from-teal-600 to-amber-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
 
             >
 
-              {uploading ? 'Uploading…' : needsApproval ? 'Submit for review' : 'Publish'}
+              {uploading || isSubmitting ? 'Uploading…' : needsApproval ? 'Submit for review' : 'Publish'}
 
             </button>
 
@@ -683,5 +675,4 @@ export default function CategoryUploadPanel({ category, className = '' }: Catego
   )
 
 }
-
 

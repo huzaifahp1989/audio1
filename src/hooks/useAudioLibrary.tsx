@@ -1,11 +1,10 @@
-import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react'
-import type { AudioTrack, AudioCategory, NasheedLanguage } from '../types'
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
+import type { AudioTrack, AudioCategory } from '../types'
 import {
   uploadAudioToCloud,
   createTrackFromRemote,
   deleteAudioFromCloud,
   updateTrackInCloud,
-  incrementTrackViews,
   getAllTracks,
   getTracksByCategory,
 } from '../lib/storage'
@@ -21,7 +20,6 @@ export interface BulkUploadItem {
   reciter: string
   topic?: string
   text?: string
-  language?: NasheedLanguage | string
 }
 
 export interface BulkUploadResult {
@@ -36,18 +34,11 @@ interface AudioLibraryState {
   uploading: boolean
   uploadError: string | null
   refresh: () => void
-<<<<<<< HEAD
   uploadTrack: (file: File, metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; text?: string; imageFile?: File; autoTrimLeadingSilence?: boolean; autoTrimTrailingSilence?: boolean }) => Promise<boolean>
   importTrackFromUrl: (data: { audioUrl: string; title: string; category: AudioCategory; reciter: string; topic?: string; duration?: number; fileName: string; fileSize: number; mimeType: string }) => Promise<boolean>
   bulkUpload: (items: BulkUploadItem[], onProgress?: (done: number, total: number) => void, options?: { autoTrimLeadingSilence?: boolean; autoTrimTrailingSilence?: boolean }) => Promise<BulkUploadResult[]>
-=======
-  uploadTrack: (file: File, metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; text?: string; language?: NasheedLanguage | string; source?: string }) => Promise<boolean>
-  bulkUpload: (items: BulkUploadItem[], onProgress?: (done: number, total: number) => void) => Promise<BulkUploadResult[]>
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
   deleteTrackById: (id: string) => Promise<void>
-  editTrack: (id: string, patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic' | 'language'>>) => Promise<void>
-  /** Record a play/view for a track (increments once per track per session) */
-  recordTrackView: (id: string) => void
+  editTrack: (id: string, patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic'>>) => Promise<void>
   getByCategory: (category: AudioCategory) => Promise<AudioTrack[]>
   incrementTrackView: (id: string, newViews?: number) => void
   updateTrackVote: (id: string, newVotes: number) => void
@@ -110,11 +101,7 @@ export function AudioLibraryProvider({ children }: { children: ReactNode }) {
 
   const uploadTrack = useCallback(async (
     file: File,
-<<<<<<< HEAD
     metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; text?: string; imageFile?: File; autoTrimLeadingSilence?: boolean; autoTrimTrailingSilence?: boolean }
-=======
-    metadata: { title: string; category: AudioCategory; reciter: string; topic?: string; text?: string; language?: NasheedLanguage | string; source?: string }
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
   ): Promise<boolean> => {
     setUploadError(null)
     if (!isLikelyAudioFile(file)) { setUploadError('Please select a valid audio file.'); return false }
@@ -233,7 +220,7 @@ export function AudioLibraryProvider({ children }: { children: ReactNode }) {
 
   const editTrack = useCallback(async (
     id: string,
-    patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic' | 'language'>>
+    patch: Partial<Pick<AudioTrack, 'title' | 'reciter' | 'category' | 'topic'>>
   ) => {
     try {
       await updateTrackInCloud(id, patch)
@@ -241,25 +228,6 @@ export function AudioLibraryProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error('[editTrack error]', err)
     }
-  }, [])
-
-  const viewedThisSession = useRef<Set<string>>(new Set())
-
-  const recordTrackView = useCallback((id: string) => {
-    if (!id || id.startsWith('draft-')) return
-    if (viewedThisSession.current.has(id)) return
-    viewedThisSession.current.add(id)
-
-    // Optimistic local bump
-    setTracks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, views: (t.views || 0) + 1 } : t))
-    )
-
-    incrementTrackViews(id).catch((err) => {
-      console.error('[recordTrackView error]', err)
-      // Allow retry later if cloud write failed
-      viewedThisSession.current.delete(id)
-    })
   }, [])
 
   const getByCategory = useCallback(async (category: AudioCategory) => {
@@ -280,11 +248,7 @@ export function AudioLibraryProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-<<<<<<< HEAD
     <AudioLibraryContext.Provider value={{ tracks, loading, uploading, uploadError, refresh, uploadTrack, importTrackFromUrl, bulkUpload, deleteTrackById, editTrack, getByCategory, incrementTrackView, updateTrackVote }}>
-=======
-    <AudioLibraryContext.Provider value={{ tracks, loading, uploading, uploadError, refresh, uploadTrack, bulkUpload, deleteTrackById, editTrack, recordTrackView, getByCategory }}>
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
       {children}
     </AudioLibraryContext.Provider>
   )

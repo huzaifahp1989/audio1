@@ -127,7 +127,7 @@ export default function SignupModal({ isOpen, onClose, initialMode = 'signup' }:
       } else if (/invalid api key/i.test(message)) {
         errorMessage = 'Invalid Supabase API key. In .env.local, use the anon key from the same project as VITE_SUPABASE_URL (Supabase Dashboard → Project Settings → API).'
       } else if (/failed to fetch|networkerror|network request failed/i.test(message)) {
-        errorMessage = 'Could not reach Supabase. Check VITE_SUPABASE_URL in .env.local matches your project (https://thywxzrrurfhdnhybjdz.supabase.co), then restart the dev server.'
+        errorMessage = 'Could not reach Supabase. Check VITE_SUPABASE_URL in .env.local matches your project (https://jlqrbbqsuksncrxjcmbc.supabase.co), then restart the dev server.'
       } else if (/invalid login credentials/i.test(message)) {
         errorMessage = 'Invalid email or password.'
       } else if (/email not confirmed/i.test(message)) {

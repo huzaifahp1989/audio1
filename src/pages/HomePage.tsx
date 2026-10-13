@@ -1,11 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-<<<<<<< HEAD
-import { BookOpen, Music2, Mic2, ArrowRight, BookText, Scroll, Hand, GraduationCap, Heart, Flame, History, Clock, Search, Sparkles, Wand2, ClipboardList, Check } from 'lucide-react'
+import { BookOpen, Music2, Mic2, ArrowRight, BookText, Scroll, Hand, GraduationCap, Heart, Flame, History, Clock, Search, Sparkles, Wand2, ClipboardList, Check, Sparkle } from 'lucide-react'
 import type { AudioTrack } from '../types'
-=======
-import { BookOpen, Music2, Mic2, Star, ArrowRight, BookText, Scroll, Hand, Car } from 'lucide-react'
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
 import { useGlobalSearch } from '../context/GlobalSearchContext'
 import TrackCard from '../components/TrackCard'
@@ -95,7 +91,6 @@ const HERO_CATEGORIES = [
   },
   {
     to: '/kids-recordings',
-<<<<<<< HEAD
     label: 'Kids Recordings',
     desc: "Kids' approved recordings",
     icon: GraduationCap,
@@ -103,15 +98,6 @@ const HERO_CATEGORIES = [
     bg: 'bg-amber-50 dark:bg-amber-500/10',
     border: 'border-amber-200 dark:border-amber-500/20',
     text: 'text-amber-700 dark:text-amber-300',
-=======
-    label: 'Kids',
-    desc: 'Fun educational audio for children',
-    icon: Star,
-    gradient: 'from-pink-400 to-rose-500',
-    bg: 'bg-pink-50',
-    border: 'border-pink-200',
-    text: 'text-pink-700',
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
   },
 ]
 
@@ -141,6 +127,12 @@ export default function HomePage() {
   })
 
   const recent = tracks.slice(0, 6)
+
+  const latestUploads = useMemo(() => {
+    return [...tracks]
+      .sort((a, b) => b.uploadedAt - a.uploadedAt)
+      .slice(0, 6)
+  }, [tracks])
 
   const trending = useMemo(() => {
     return [...tracks]
@@ -194,56 +186,85 @@ export default function HomePage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 md:py-10">
+    <div className="mx-auto w-full max-w-7xl px-3 py-6 sm:px-4 sm:py-8 md:py-10">
 
       <StreakBanner />
 
       {/* Hero */}
-      <div className="relative overflow-hidden rounded-3xl border border-[var(--theme-border)] bg-gradient-to-br from-blue-700 via-blue-600 to-sky-500 p-8 md:p-14 mb-12 text-center shadow-[0_18px_50px_rgba(29,78,216,0.28)]">
-        <div className="absolute inset-0 opacity-15 pointer-events-none"
+      <div className="relative mb-8 overflow-hidden rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-emerald-800 via-teal-700 to-cyan-700 p-6 text-center shadow-xl shadow-emerald-950/15 sm:mb-12 sm:p-10 md:p-14">
+        <div className="absolute inset-0 opacity-10 pointer-events-none"
           style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.6'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
           }}
         />
         <div className="relative z-10">
-          <div className="inline-flex items-center gap-2 bg-white/20 border border-white/30 rounded-full px-4 py-1.5 text-sm text-white mb-6 backdrop-blur-sm">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3.5 py-1.5 text-xs font-semibold text-white backdrop-blur-md sm:mb-6 sm:px-4 sm:text-sm">
             <span>📖</span> Islamic Audio Library
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight drop-shadow">
-            Listen to the Voice of <span className="text-sky-200">Islam</span>
+          <h1 className="mb-4 text-3xl font-extrabold tracking-tight text-white drop-shadow-sm sm:text-4xl md:text-5xl">
+            Listen to the Voice of <span className="bg-gradient-to-r from-emerald-200 to-teal-100 bg-clip-text text-transparent">Islam</span>
           </h1>
-          <p className="text-blue-50 text-lg max-w-xl mx-auto mb-8">
+          <p className="mx-auto mb-6 max-w-xl text-base text-emerald-50/90 sm:mb-8 sm:text-lg">
             Explore Quran recitations, nasheeds, Islamic talks and children's audio — all in one place.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link
               to="/quran"
-<<<<<<< HEAD
-              className="inline-flex items-center gap-2 bg-white text-blue-700 hover:bg-sky-50 transition-colors font-semibold px-6 py-3 rounded-xl shadow-md"
+              className="inline-flex items-center gap-2 bg-white text-emerald-800 hover:bg-emerald-50 transition font-bold px-6 py-3 rounded-2xl shadow-lg shadow-black/10"
             >
               Start Listening <ArrowRight size={18} />
             </Link>
             <button
               onClick={openSearch}
-              className="inline-flex items-center gap-2 bg-white/15 border border-white/30 text-white hover:bg-white/25 transition-colors font-semibold px-6 py-3 rounded-xl backdrop-blur-sm"
+              className="inline-flex items-center gap-2 bg-white/15 border border-white/20 text-white hover:bg-white/25 transition font-semibold px-6 py-3 rounded-2xl backdrop-blur-md"
             >
               <Search size={18} /> Search library
             </button>
-=======
-              className="inline-flex items-center gap-2 bg-white text-violet-700 hover:bg-violet-50 transition-colors font-semibold px-6 py-3 rounded-xl shadow-md"
-            >
-              Start Listening <ArrowRight size={18} />
-            </Link>
             <Link
-              to="/car"
-              className="inline-flex items-center gap-2 bg-white/15 border border-white/40 text-white hover:bg-white/25 transition-colors font-semibold px-6 py-3 rounded-xl"
+              to="/favorites"
+              className="inline-flex items-center gap-2 rounded-2xl border border-white/20 bg-white/15 px-6 py-3 font-semibold text-white backdrop-blur-md transition hover:bg-white/25"
             >
-              <Car size={18} /> Car Mode
+              <Heart size={18} /> Favorites
             </Link>
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
           </div>
         </div>
       </div>
+
+      {/* Latest Uploads section */}
+      {latestUploads.length > 0 && (
+        <section className="mb-12">
+          <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                  <Sparkle size={18} />
+                </span>
+                <h2 className="text-2xl font-bold tracking-tight text-[var(--theme-ink)]">Latest Uploads</h2>
+              </div>
+              <p className="text-xs sm:text-sm text-[var(--theme-muted)] mt-1 ml-10">
+                Fresh audio uploaded to the collection
+              </p>
+            </div>
+            <Link
+              to="/admin"
+              className="self-start sm:self-auto inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 hover:underline"
+            >
+              Upload audio <ArrowRight size={14} />
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {latestUploads.map((track, index) => (
+              <TrackCard
+                key={`latest-${track.id}`}
+                track={track}
+                tracks={latestUploads}
+                index={index}
+                showNameOnTop
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="mb-12 grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-3xl border border-[var(--theme-border)] bg-[var(--theme-surface-2)] p-5 shadow-sm sm:p-6">
@@ -411,18 +432,6 @@ export default function HomePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {recentlyPlayed.map((track, index) => (
               <TrackCard key={`recent-${track.id}`} track={track} tracks={recentlyPlayed} index={index} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Recent uploads */}
-      {recent.length > 0 && (
-        <section>
-          <SectionHeading icon={Music2} title="Recently Uploaded" accent="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {recent.map((track, index) => (
-              <TrackCard key={track.id} track={track} tracks={recent} index={index} />
             ))}
           </div>
         </section>

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect, useRef } from 'react'
 import { trackPageView, identifyUser, trackEvent } from './lib/analytics'
@@ -6,9 +5,6 @@ import { useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { AuthProvider } from './context/AuthContext'
 import { FavoritesProvider } from './context/FavoritesContext'
-=======
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 import { AudioPlayerProvider } from './context/AudioPlayerContext'
 import { AudioLibraryProvider } from './hooks/useAudioLibrary'
 import Layout from './components/layout/Layout'
@@ -16,20 +12,15 @@ import HomePage from './pages/HomePage'
 import QuranPage from './pages/QuranPage'
 import NasheedsPage from './pages/NasheedsPage'
 import TalksPage from './pages/TalksPage'
-<<<<<<< HEAD
 import FavoritesPage from './pages/FavoritesPage'
-=======
-import KidsPage from './pages/KidsPage'
-import KidsRecordPage from './pages/KidsRecordPage'
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 import AdminPage from './pages/AdminPage'
 import RecordPage from './pages/RecordPage'
 import SubmitAudioPage from './pages/SubmitAudioPage'
 import UserSubmissionsApprovalPage from './pages/UserSubmissionsApprovalPage'
+import MySubmissionsPage from './pages/MySubmissionsPage'
 import AudiobookPage from './pages/AudiobookPage'
 import HadithPage from './pages/HadithPage'
 import DuaPage from './pages/DuaPage'
-<<<<<<< HEAD
 import KidsLearningPage from './pages/KidsLearningPage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import PodcastPage from './pages/PodcastPage'
@@ -121,6 +112,7 @@ function AppShell() {
         <Route path="/kids-approval" element={<Navigate to="/quran-recordings-approval" replace />} />
         <Route path="/submit-audio" element={<SubmitAudioPage />} />
         <Route path="/user-submissions-approval" element={<UserSubmissionsApprovalPage />} />
+        <Route path="/my-submissions" element={<MySubmissionsPage />} />
         <Route path="/track/:id" element={<TrackPage />} />
         <Route path="/speaker/:slug" element={<SpeakerPage />} />
         <Route path="/car" element={<CarModePage />} />
@@ -129,14 +121,10 @@ function AppShell() {
     </Routes>
   )
 }
-=======
-import CarModePage from './pages/CarModePage'
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
 
 export default function App() {
   return (
     <BrowserRouter>
-<<<<<<< HEAD
       <ThemeProvider>
       <AuthProvider>
         <FavoritesProvider>
@@ -148,33 +136,6 @@ export default function App() {
         </FavoritesProvider>
       </AuthProvider>
       </ThemeProvider>
-=======
-      <AudioLibraryProvider>
-        <AudioPlayerProvider>
-          <Routes>
-            <Route element={<Layout />}>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/car" element={<CarModePage />} />
-              <Route path="/drive" element={<Navigate to="/car" replace />} />
-              <Route path="/quran" element={<QuranPage />} />
-              <Route path="/nasheeds" element={<NasheedsPage />} />
-              <Route path="/talks" element={<TalksPage />} />
-              <Route path="/kids" element={<KidsPage />} />
-              {/* Legacy / alternate kids library URLs */}
-              <Route path="/kids-recordings" element={<KidsPage />} />
-              <Route path="/kids-recording" element={<Navigate to="/kids-recordings" replace />} />
-              <Route path="/kids/studio" element={<KidsRecordPage />} />
-              <Route path="/kids-recordings/studio" element={<KidsRecordPage />} />
-              <Route path="/admin" element={<AdminPage />} />
-              <Route path="/record" element={<RecordPage />} />
-              <Route path="/audiobooks" element={<AudiobookPage />} />
-              <Route path="/hadith" element={<HadithPage />} />
-              <Route path="/dua" element={<DuaPage />} />
-            </Route>
-          </Routes>
-        </AudioPlayerProvider>
-      </AudioLibraryProvider>
->>>>>>> bb41fdf8dab76e22e26ed6544950f99b09baf0f3
     </BrowserRouter>
   )
 }

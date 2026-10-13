@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { X, Mail, Lock, User, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { SUPABASE_URL } from '../lib/supabase'
 
 export type AuthMode = 'signup' | 'login'
 
@@ -127,7 +128,7 @@ export default function SignupModal({ isOpen, onClose, initialMode = 'signup' }:
       } else if (/invalid api key/i.test(message)) {
         errorMessage = 'Invalid Supabase API key. In .env.local, use the anon key from the same project as VITE_SUPABASE_URL (Supabase Dashboard → Project Settings → API).'
       } else if (/failed to fetch|networkerror|network request failed/i.test(message)) {
-        errorMessage = 'Could not reach Supabase. Check VITE_SUPABASE_URL in .env.local matches your project (https://jlqrbbqsuksncrxjcmbc.supabase.co), then restart the dev server.'
+        errorMessage = `Could not reach Supabase. Current URL: ${SUPABASE_URL}. Make sure this matches your project.`
       } else if (/invalid login credentials/i.test(message)) {
         errorMessage = 'Invalid email or password.'
       } else if (/email not confirmed/i.test(message)) {

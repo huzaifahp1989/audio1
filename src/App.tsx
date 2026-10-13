@@ -123,6 +123,7 @@ function AppShell() {
 }
 
 export default function App() {
+  // App root - providers wrap all providers
   return (
     <BrowserRouter>
       <ThemeProvider>

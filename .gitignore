@@ -28,3 +28,6 @@ dist-ssr
 .env*.local
 tmp/
 .env*
+
+.vercel-data/
+.vercel-data

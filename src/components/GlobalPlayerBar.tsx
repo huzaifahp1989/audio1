@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Pause, Play, SkipBack, SkipForward, Square, ListMusic, ChevronDown } from 'lucide-react'
+import { Pause, Play, SkipBack, SkipForward, Square, ListMusic, ChevronDown, HardDriveDownload } from 'lucide-react'
 import { useAudioPlayer } from '../context/AudioPlayerContext'
 import { formatDuration } from '../lib/storage'
 
@@ -8,6 +8,7 @@ export default function GlobalPlayerBar() {
     currentTrack, isPlaying, currentTime, duration,
     playNext, playPrev, hasNext, hasPrev,
     togglePlay, stopTrack, playlist, playlistIndex, playFromList,
+    isCurrentOffline,
   } = useAudioPlayer()
 
   const [queueOpen, setQueueOpen] = useState(false)
@@ -68,9 +69,19 @@ export default function GlobalPlayerBar() {
                   </span>
                 </span>
               </p>
-              <p className="truncate text-xs text-[var(--theme-muted)]">
-                {currentTrack.reciter}
-                {duration ? ` · ${formatDuration(currentTime)} / ${formatDuration(duration)}` : ''}
+              <p className="flex items-center gap-1.5 truncate text-xs text-[var(--theme-muted)]">
+                {isCurrentOffline && (
+                  <span
+                    title="Playing from a downloaded copy"
+                    className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300"
+                  >
+                    <HardDriveDownload size={9} /> Offline
+                  </span>
+                )}
+                <span className="truncate">
+                  {currentTrack.reciter}
+                  {duration ? ` · ${formatDuration(currentTime)} / ${formatDuration(duration)}` : ''}
+                </span>
               </p>
             </div>
 

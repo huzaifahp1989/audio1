@@ -8,6 +8,7 @@ import { recordPlay, updateProgress, getProgress } from '../lib/recentlyPlayed'
 import { recordListeningDay } from '../lib/streaks'
 import { trackEvent, trackAudioPlay, trackAudioResume, trackAudioPause, trackAudioComplete, trackAudioProgress, trackAudioError } from '../lib/analytics'
 import { publishAndroidAutoLibrary } from '../lib/androidAuto'
+import { resolvePlayableUrl } from '../lib/offlineDownloads'
 
 const PLAYLIST_STORAGE_KEY = 'audio-player-saved-playlists'
 
@@ -21,6 +22,8 @@ interface PlayerState {
   volume: number
   playbackRate: number
   audioError: string | null
+  /** True when the current track is playing from a downloaded offline copy. */
+  isCurrentOffline: boolean
   playlist: AudioTrack[]
   playlistIndex: number
   hasNext: boolean
@@ -65,6 +68,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const [volume, setVolumeState] = useState(1)
   const [playbackRate, setPlaybackRateState] = useState(1)
   const [audioError, setAudioError] = useState<string | null>(null)
+  const [currentIsOffline, setCurrentIsOffline] = useState(false)
   const isAdPlaying = false
   const skipAd = useCallback(() => {}, [])
   const [playlist, setPlaylist] = useState<AudioTrack[]>([])
@@ -214,13 +218,14 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     audio.pause()
     audio.src = ''
 
-    const audioUrl = track.audioUrl
+    const audioUrl = await resolvePlayableUrl(track)
     if (!audioUrl) {
       console.error('No audio URL available')
       return
     }
 
     setAudioError(null)
+    setCurrentIsOffline(audioUrl.startsWith('blob:'))
     audio.src = audioUrl
     audio.volume = volume
     audio.playbackRate = playbackRate
@@ -743,12 +748,14 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     setPlaylist([])
     setPlaylistIndex(-1)
     setActivePlaylistName(null)
+    setCurrentIsOffline(false)
   }, [])
 
   return (
     <AudioPlayerContext.Provider
       value={{
         currentTrack, isPlaying, currentTime, duration, volume, playbackRate, audioError,
+        isCurrentOffline: currentIsOffline,
         playlist, playlistIndex, hasNext, hasPrev, hasNextSponsored,
         isAdPlaying,
         activePlaylistName, savedPlaylists,

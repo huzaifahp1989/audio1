@@ -5,6 +5,7 @@ import { useAudioPlayer } from '../context/AudioPlayerContext'
 import { formatDuration, formatUploadDate } from '../lib/storage'
 import { formatViews } from '../lib/views'
 import ShareButton from './ShareButton'
+import DownloadButton from './DownloadButton'
 import InlinePlayerPanel from './InlinePlayerPanel'
 
 interface TrackCardProps {
@@ -81,6 +82,7 @@ export default function TrackCard({ track, tracks, index, showNameOnTop = false 
                     {isAddedToPlaylist ? 'Added' : 'Playlist'}
                   </button>
                   <ShareButton track={track} className="h-8 w-8 !p-1.5" />
+                  <DownloadButton track={track} size={14} className="h-8 w-8" />
                 </div>
               )}
               {isActive && (
@@ -98,6 +100,7 @@ export default function TrackCard({ track, tracks, index, showNameOnTop = false 
                     {isAddedToPlaylist ? 'In playlist' : 'Playlist'}
                   </button>
                   <ShareButton track={track} className="h-8 w-8 !p-1.5" />
+                  <DownloadButton track={track} size={14} className="h-8 w-8" />
                 </div>
               )}
             </div>
@@ -150,6 +153,7 @@ export default function TrackCard({ track, tracks, index, showNameOnTop = false 
                     {isAddedToPlaylist ? 'Added' : 'Add to playlist'}
                   </button>
                   <ShareButton track={track} className="h-9 w-9" />
+                  <DownloadButton track={track} className="h-9 w-9" />
                 </div>
               )}
             </div>
@@ -173,6 +177,7 @@ export default function TrackCard({ track, tracks, index, showNameOnTop = false 
                 {isAddedToPlaylist ? 'In playlist' : 'Add to playlist'}
               </button>
               <ShareButton track={track} className="h-9 w-9" />
+              <DownloadButton track={track} className="h-9 w-9" />
             </div>
           </div>
         )}

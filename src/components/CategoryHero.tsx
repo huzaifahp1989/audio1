@@ -14,7 +14,9 @@ interface CategoryHeroProps {
   itemCount: number
   /** Singular noun for the count line, e.g. "recitation" */
   itemNoun: string
-  totalPlays: number
+  totalPlays?: number
+  /** Replaces the default "{count} {noun}s · N plays" row entirely. */
+  stats?: React.ReactNode
   search?: {
     value: string
     onChange: (value: string) => void
@@ -38,6 +40,7 @@ export default function CategoryHero({
   itemCount,
   itemNoun,
   totalPlays,
+  stats,
   search,
   actions,
 }: CategoryHeroProps) {
@@ -54,16 +57,24 @@ export default function CategoryHero({
           </span>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
           <p className="mt-2 max-w-md text-[13px] text-white/85 sm:text-sm">{description}</p>
-          <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/75 sm:text-sm">
-            <span>
-              {itemCount} {itemNoun}
-              {itemCount === 1 ? '' : 's'}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Eye size={12} />
-              {formatViews(totalPlays)} plays
-            </span>
-          </p>
+          {stats ? (
+            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/75 sm:text-sm">
+              {stats}
+            </div>
+          ) : (
+            <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/75 sm:text-sm">
+              <span>
+                {itemCount} {itemNoun}
+                {itemCount === 1 ? '' : 's'}
+              </span>
+              {typeof totalPlays === 'number' && (
+                <span className="inline-flex items-center gap-1">
+                  <Eye size={12} />
+                  {formatViews(totalPlays)} plays
+                </span>
+              )}
+            </p>
+          )}
         </div>
 
         {search && (

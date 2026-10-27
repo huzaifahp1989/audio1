@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { BookOpen, Music2, Mic2, Shield, Home, Mic, BookText, Scroll, Hand, GraduationCap, BarChart3, Radio, Smile, Heart } from 'lucide-react'
+import { BookOpen, Music2, Mic2, Shield, Home, Mic, BookText, Scroll, Hand, GraduationCap, BarChart3, Radio, Smile, Heart, HardDriveDownload } from 'lucide-react'
 
 const TABS = [
   { to: '/', label: 'Home', icon: Home },
@@ -8,6 +8,7 @@ const TABS = [
   { to: '/nasheeds', label: 'Nasheeds', icon: Music2, activeClass: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' },
   { to: '/talks', label: 'Talks', icon: Mic2, activeClass: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' },
   { to: '/favorites', label: 'Favorites', icon: Heart, activeClass: 'bg-rose-500/10 text-rose-700 dark:text-rose-300' },
+  { to: '/offline', label: 'Offline', icon: HardDriveDownload, activeClass: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' },
   { to: '/podcast', label: 'Podcast', icon: Radio },
   { to: '/audiobooks', label: 'Books', icon: BookText },
   { to: '/hadith', label: 'Hadith', icon: Scroll },

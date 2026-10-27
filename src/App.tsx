@@ -6,6 +6,7 @@ import { ThemeProvider } from './context/ThemeContext'
 import { AuthProvider } from './context/AuthContext'
 import { FavoritesProvider } from './context/FavoritesContext'
 import { AudioPlayerProvider } from './context/AudioPlayerContext'
+import { OfflineDownloadsProvider } from './context/OfflineDownloadsContext'
 import { AudioLibraryProvider } from './hooks/useAudioLibrary'
 import Layout from './components/layout/Layout'
 import HomePage from './pages/HomePage'
@@ -29,6 +30,7 @@ import KidsApprovalPage from './pages/KidsApprovalPage'
 import TrackPage from './pages/TrackPage'
 import SpeakerPage from './pages/SpeakerPage'
 import CarModePage from './pages/CarModePage'
+import OfflinePage from './pages/OfflinePage'
 import { registerNativeCapabilities } from './capNative'
 
 const PAGE_TITLES: Record<string, string> = {
@@ -37,6 +39,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/nasheeds': 'Nasheeds',
   '/talks': 'Talks',
   '/favorites': 'Favorites',
+  '/offline': 'Downloads',
   '/admin': 'Admin',
   '/record': 'Record',
   '/audiobooks': 'Audiobooks',
@@ -94,6 +97,7 @@ function AppShell() {
         <Route path="/nasheeds" element={<NasheedsPage />} />
         <Route path="/talks" element={<TalksPage />} />
         <Route path="/favorites" element={<FavoritesPage />} />
+        <Route path="/offline" element={<OfflinePage />} />
         <Route path="/kids" element={<Navigate to="/kids-recordings" replace />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/record" element={<RecordPage />} />
@@ -131,7 +135,9 @@ export default function App() {
         <FavoritesProvider>
         <AudioLibraryProvider>
           <AudioPlayerProvider>
+          <OfflineDownloadsProvider>
           <AppShell />
+          </OfflineDownloadsProvider>
           </AudioPlayerProvider>
         </AudioLibraryProvider>
         </FavoritesProvider>

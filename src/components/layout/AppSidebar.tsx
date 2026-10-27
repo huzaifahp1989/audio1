@@ -1,4 +1,4 @@
-import { Heart, Home, Library, ListMusic, Mic, Music2, Radio, Search, Sparkles } from 'lucide-react'
+import { Heart, HardDriveDownload, Home, Library, ListMusic, Mic, Music2, Radio, Search, Sparkles } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { useGlobalSearch } from '../../context/GlobalSearchContext'
 
@@ -13,6 +13,7 @@ const LIBRARY_LINKS = [
   { to: '/talks', label: 'Talks', icon: Radio },
   { to: '/podcast', label: 'Podcasts', icon: Radio },
   { to: '/audiobooks', label: 'Audiobooks', icon: Library },
+  { to: '/offline', label: 'Downloads', icon: HardDriveDownload },
 ]
 
 export default function AppSidebar() {

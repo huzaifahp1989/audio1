@@ -8,6 +8,7 @@ import { TALKS_TOPICS } from '../constants/categories'
 import FavoriteButton from './FavoriteButton'
 import VoteButton from './VoteButton'
 import ShareButton from './ShareButton'
+import DownloadButton from './DownloadButton'
 import InlinePlayerPanel from './InlinePlayerPanel'
 import RelatedTracks from './RelatedTracks'
 import ReactionBar from './ReactionBar'
@@ -100,6 +101,7 @@ export default function TalkTrackRow({ track, tracks, index }: TalkTrackRowProps
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <VoteButton track={track} variant="talks" />
           <FavoriteButton track={track} variant="talks" />
+          <DownloadButton track={track} />
           <div className="hidden sm:flex items-center gap-2">
             <ShareButton track={track} />
             <button

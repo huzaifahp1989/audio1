@@ -198,6 +198,24 @@ function devYoutubeImportApiPlugin(): Plugin {
   }
 }
 
+function devAudioDownloadApiPlugin(): Plugin {
+  return {
+    name: 'dev-audio-download-api',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url?.startsWith('/api/audio-download')) return next()
+
+        // Reuse the deployed Vercel handler so dev and production behave identically.
+        const { default: handler } = await import('./api/audio-download.js')
+        const parsed = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+        ;(req as { query?: Record<string, string> }).query = Object.fromEntries(parsed.searchParams)
+        await handler(req, res)
+      })
+    },
+  }
+}
+
 export default defineConfig({
   server: {
     host: true,
@@ -209,5 +227,6 @@ export default defineConfig({
     tailwindcss(),
     devUploadApiPlugin(),
     devYoutubeImportApiPlugin(),
+    devAudioDownloadApiPlugin(),
   ],
 })

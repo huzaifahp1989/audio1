@@ -7,6 +7,7 @@ import { formatViews } from '../lib/views'
 import FavoriteButton from './FavoriteButton'
 import VoteButton from './VoteButton'
 import ShareButton from './ShareButton'
+import DownloadButton from './DownloadButton'
 import InlinePlayerPanel from './InlinePlayerPanel'
 import RelatedTracks from './RelatedTracks'
 import ReactionBar from './ReactionBar'
@@ -88,6 +89,7 @@ export default function NasheedTrackRow({ track, tracks, index }: NasheedTrackRo
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <VoteButton track={track} variant="nasheeds" />
           <FavoriteButton track={track} variant="nasheeds" />
+          <DownloadButton track={track} />
           <div className="hidden sm:flex items-center gap-2">
             <ShareButton track={track} />
             <button

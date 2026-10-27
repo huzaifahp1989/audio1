@@ -19,6 +19,8 @@ export function buildContributorOptions(
   featured: string[],
   allLabel = 'All'
 ): string[] {
+  const featuredKeys = new Set(featured.map(normalizeContributor))
+
   const canonicalFromTracks = [
     ...new Set(
       tracks
@@ -30,15 +32,23 @@ export function buildContributorOptions(
 
   const featuredWithTracks = featured
     .filter((name) => name !== 'Other')
-    .filter((name) =>
-      tracks.some((t) => contributorMatches(t.reciter, name))
-    )
+    .filter((name) => tracks.some((t) => contributorMatches(t.reciter, name)))
 
   const extra = canonicalFromTracks
-    .filter((name) => !featured.includes(name))
+    .filter((name) => !featuredKeys.has(normalizeContributor(name)))
     .sort((a, b) => a.localeCompare(b))
 
-  return [allLabel, ...featuredWithTracks, ...extra]
+  // Dedupe case-insensitively so duplicate list entries never produce repeated
+  // React keys (which silently drop options from the dropdown).
+  const seen = new Set<string>()
+  const options = [...featuredWithTracks, ...extra].filter((name) => {
+    const key = normalizeContributor(name)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+
+  return [allLabel, ...options]
 }
 
 export function countTracksForContributor(

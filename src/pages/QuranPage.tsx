@@ -1,13 +1,15 @@
 import React, { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BookOpen, Eye, Sparkles, ChevronDown, Baby, GraduationCap, Upload } from 'lucide-react'
+import { BookOpen, Sparkles, Baby, GraduationCap, Upload, Eye } from 'lucide-react'
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
 import TrackList from '../components/TrackList'
 import CategoryUploadPanel from '../components/CategoryUploadPanel'
+import CategoryHero from '../components/CategoryHero'
+import CategoryChips from '../components/CategoryChips'
+import CategoryPlayerDock from '../components/CategoryPlayerDock'
 import SpeakerProfileLink from '../components/SpeakerProfileLink'
 import SortFilterBar from '../components/SortFilterBar'
 import PlayAllButton from '../components/PlayAllButton'
-import { QURAN_RECITERS } from '../constants/categories'
 import { formatViews } from '../lib/views'
 import { sortTracks, type SortOption } from '../lib/trackSort'
 
@@ -25,40 +27,49 @@ export default function QuranPage() {
   const sortedFiltered = useMemo(() => sortTracks(filteredTracks, sort), [filteredTracks, sort])
   const sortedKids = useMemo(() => sortTracks(kidsQuranTracks, kidsSort), [kidsQuranTracks, kidsSort])
 
-  const recitersWithTracks = ['All', ...QURAN_RECITERS.filter((r) => r !== 'Other')]
+  const reciterChips = useMemo(() => {
+    const counts = new Map<string, number>()
+    quranTracks.forEach((track) => {
+      if (!track.reciter) return
+      counts.set(track.reciter, (counts.get(track.reciter) ?? 0) + 1)
+    })
+    return [
+      { id: 'All', label: 'All Reciters', count: quranTracks.length },
+      ...[...counts.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([reciter, count]) => ({ id: reciter, label: reciter, count })),
+    ]
+  }, [quranTracks])
+
+  const pageTracks = useMemo(() => [...sortedFiltered, ...sortedKids], [sortedFiltered, sortedKids])
 
   const totalViews = quranTracks.reduce((sum, t) => sum + (t.views || 0), 0)
   const kidsTotalViews = kidsQuranTracks.reduce((sum, t) => sum + (t.views || 0), 0)
 
   return (
     <div className="max-w-5xl mx-auto px-2.5 sm:px-4 py-5 sm:py-10">
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-sky-600 via-blue-600 to-blue-700 p-4 sm:p-8 mb-5 sm:mb-8 text-white shadow-xl">
-        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_20%_20%,white,transparent_40%),radial-gradient(circle_at_80%_0%,white,transparent_35%)]" />
-        <div className="relative">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold backdrop-blur-sm mb-2.5 sm:mb-3">
-            <Sparkles size={12} /> Holy Quran
-          </div>
-          <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Quran Recitations</h1>
-          <p className="mt-1.5 sm:mt-2 text-[13px] sm:text-sm text-sky-100 max-w-md">
-            Listen to beautiful recitations from renowned qaris around the world.
-          </p>
-          <p className="mt-2.5 sm:mt-3 text-[11px] sm:text-sm text-sky-200 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span>{quranTracks.length} recitation{quranTracks.length !== 1 ? 's' : ''}</span>
-            <span className="inline-flex items-center gap-1">
-              <Eye size={10} />
-              {formatViews(totalViews)} plays
-            </span>
-          </p>
+      <CategoryHero
+        icon={<Sparkles size={12} />}
+        badge="Holy Quran"
+        title="Quran Recitations"
+        description="Listen to beautiful recitations from renowned qaris around the world."
+        gradient="from-sky-600 via-blue-600 to-blue-700"
+        itemCount={quranTracks.length}
+        itemNoun="recitation"
+        totalPlays={totalViews}
+        actions={
           <Link
             to="/submit-audio?category=quran"
-            className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-sky-50"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-sky-50"
           >
             <Upload size={16} /> Submit Quran audio
           </Link>
-        </div>
-      </section>
+        }
+      />
 
       <CategoryUploadPanel category="quran" className="mb-5 sm:mb-8" />
+
+      <CategoryPlayerDock tracks={pageTracks} variant="sky" className="mb-5 sm:mb-6" />
 
       {/* Kids Quran Section (first, prominent) */}
       <section className="mb-6 sm:mb-10 rounded-3xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-3.5 sm:p-6 shadow-sm">
@@ -113,31 +124,13 @@ export default function QuranPage() {
 
       {/* Main Reciters Section */}
       <section className="mb-5 sm:mb-8">
-        <label htmlFor="quran-reciter" className="text-[11px] font-semibold text-[var(--theme-muted)] uppercase tracking-wider mb-2 block">
-          Reciter
-        </label>
-        <div className="relative max-w-md">
-          <select
-            id="quran-reciter"
-            value={selected}
-            onChange={(e) => setSelected(e.target.value)}
-            className="w-full appearance-none rounded-xl border border-[var(--theme-border)] bg-[var(--theme-surface-2)] pl-3.5 pr-10 py-2.5 text-[13px] font-semibold text-[var(--theme-ink)] shadow-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-          >
-            {recitersWithTracks.map((reciter) => {
-              const count =
-                reciter === 'All'
-                  ? quranTracks.length
-                  : quranTracks.filter((t) => t.reciter === reciter).length
-              return (
-                <option key={reciter} value={reciter}>
-                  {reciter}
-                  {count > 0 ? ` (${count})` : ''}
-                </option>
-              )
-            })}
-          </select>
-          <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--theme-muted)]" />
-        </div>
+        <CategoryChips
+          label="Reciter"
+          options={reciterChips}
+          value={selected}
+          onChange={setSelected}
+          activeClass="bg-blue-600 text-white border-blue-600"
+        />
         <SpeakerProfileLink name={selected} className="mt-2" />
       </section>
 

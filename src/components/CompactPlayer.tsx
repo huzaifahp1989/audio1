@@ -1,224 +1,225 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { Play, Pause, SkipBack, SkipForward, ChevronLeft, ChevronRight, Volume2, VolumeX, ListMusic, X } from 'lucide-react'
+import React, { useEffect, useRef, useState } from 'react'
+import { Play, Pause, SkipBack, SkipForward, Rewind, FastForward, Volume2, VolumeX, ListMusic, ChevronDown, ChevronUp } from 'lucide-react'
 import { useAudioPlayer } from '../context/AudioPlayerContext'
 import { formatDuration } from '../lib/storage'
 import type { AudioTrack } from '../types'
 
 interface CompactPlayerProps {
   tracks: AudioTrack[]
-  currentIndex: number
+  /** Kept for backwards compatibility; the active track is derived from context. */
+  currentIndex?: number
   variant?: 'violet' | 'sky' | 'emerald'
 }
 
-export default function CompactPlayer({ tracks, currentIndex, variant = 'violet' }: CompactPlayerProps) {
+const VARIANT_COLORS = {
+  violet: { bg: 'bg-violet-600', ring: 'accent-violet-600', soft: 'bg-violet-50 dark:bg-violet-500/10', text: 'text-violet-700 dark:text-violet-300' },
+  sky: { bg: 'bg-sky-600', ring: 'accent-sky-600', soft: 'bg-sky-50 dark:bg-sky-500/10', text: 'text-sky-700 dark:text-sky-300' },
+  emerald: { bg: 'bg-emerald-600', ring: 'accent-emerald-600', soft: 'bg-emerald-50 dark:bg-emerald-500/10', text: 'text-emerald-700 dark:text-emerald-300' },
+}
+
+export default function CompactPlayer({ tracks, variant = 'violet' }: CompactPlayerProps) {
   const {
     currentTrack, isPlaying, currentTime, duration, volume,
     togglePlay, seek, setVolume, playNext, playPrev, hasNext, hasPrev,
-    playFromList
+    playFromList,
   } = useAudioPlayer()
 
-  const [showPlaylist, setShowPlaylist] = useState(false)
-  const [isMinimized, setIsMinimized] = useState(false)
+  const [listOpen, setListOpen] = useState(true)
   const progressRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
 
-  const progress = duration ? (currentTime / duration) * 100 : 0
+  const colors = VARIANT_COLORS[variant]
+  const progress = duration ? Math.min(100, (currentTime / duration) * 100) : 0
+  const activeIndex = tracks.findIndex((t) => t.id === currentTrack?.id)
 
-  const handleSeek = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+  // Keep the playing row visible inside the scrollable list.
+  useEffect(() => {
+    if (!listOpen || !listRef.current) return
+    const active = listRef.current.querySelector<HTMLElement>('[data-playing="true"]')
+    active?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [listOpen, currentTrack?.id])
+
+  const handleSeek = (event: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     if (!progressRef.current || !duration) return
     const rect = progressRef.current.getBoundingClientRect()
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+    const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
     const percent = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100))
     seek((percent / 100) * duration)
   }
 
-  const variantColors = {
-    violet: { bg: 'bg-violet-500', text: 'text-violet-600', light: 'bg-violet-100' },
-    sky: { bg: 'bg-sky-500', text: 'text-sky-600', light: 'bg-sky-100' },
-    emerald: { bg: 'bg-emerald-500', text: 'text-emerald-600', light: 'bg-emerald-100' }
-  }
-
-  const colors = variantColors[variant]
-
   if (!currentTrack) return null
 
-  if (isMinimized) {
-    return (
-      <div className="fixed bottom-4 left-4 right-4 z-50">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-3 flex items-center gap-3">
-          <button onClick={() => setIsMinimized(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
-            <ListMusic size={18} />
-          </button>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{currentTrack.title}</p>
-            <p className="text-xs text-slate-500 truncate">{currentTrack.reciter}</p>
-          </div>
-          <button onClick={togglePlay} className={`w-10 h-10 rounded-full ${colors.bg} text-white flex items-center justify-center`}>
-            {isPlaying ? <Pause size={18} /> : <Play size={18} />}
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="space-y-4">
-      {/* Compact Player */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-        {/* Progress Bar - Top */}
-        <div
-          ref={progressRef}
-          className="h-1.5 bg-slate-200 dark:bg-slate-700 cursor-pointer group relative"
-          onClick={handleSeek}
-          onTouchStart={handleSeek}
-        >
-          <div
-            className={`h-full ${colors.bg} transition-all duration-100 relative`}
-            style={{ width: `${progress}%` }}
-          >
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow opacity-0 group-hover:opacity-100 transition-opacity" />
-          </div>
+    <div className="overflow-hidden rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-surface)] shadow-lg">
+      {/* Seek bar */}
+      <div
+        ref={progressRef}
+        role="slider"
+        aria-label="Seek"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(progress)}
+        tabIndex={0}
+        onClick={handleSeek}
+        onTouchStart={handleSeek}
+        className="group relative h-2 cursor-pointer touch-none bg-[var(--theme-soft)]"
+      >
+        <div className={`h-full ${colors.bg} transition-[width] duration-100`} style={{ width: `${progress}%` }} />
+        <span
+          className={`absolute top-1/2 h-3 w-3 -translate-y-1/2 rounded-full ${colors.bg} opacity-0 shadow transition-opacity group-hover:opacity-100`}
+          style={{ left: `calc(${progress}% - 0.375rem)` }}
+          aria-hidden="true"
+        />
+      </div>
+
+      <div className="flex items-center gap-2.5 p-3 sm:gap-3 sm:p-4">
+        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${colors.soft} text-xl sm:h-12 sm:w-12`}>
+          <span aria-hidden="true">🎵</span>
         </div>
 
-        <div className="p-3 sm:p-4">
-          {/* Track Info */}
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center text-2xl shrink-0">
-              🎵
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100 truncate">
-                {currentTrack.title}
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 truncate">
-                {currentTrack.reciter}
-              </p>
-            </div>
-            <button
-              onClick={() => setShowPlaylist(!showPlaylist)}
-              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:hidden"
-            >
-              <ListMusic size={20} className={showPlaylist ? colors.text : 'text-slate-500'} />
-            </button>
-          </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-[var(--theme-ink)] sm:text-base">{currentTrack.title}</p>
+          <p className="truncate text-xs text-[var(--theme-muted)]">
+            {currentTrack.reciter}
+            {activeIndex >= 0 && tracks.length > 1 ? ` · ${activeIndex + 1} of ${tracks.length}` : ''}
+          </p>
+        </div>
 
-          {/* Controls */}
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1 sm:gap-2">
-              <button
-                onClick={playPrev}
-                disabled={!hasPrev}
-                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <SkipBack size={18} />
-              </button>
+        <span className="shrink-0 text-[11px] tabular-nums text-[var(--theme-muted)] sm:text-xs">
+          {formatDuration(currentTime)} / {duration ? formatDuration(duration) : '--:--'}
+        </span>
 
-              <button
-                onClick={() => seek(Math.max(0, currentTime - 10))}
-                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                <ChevronLeft size={18} />
-              </button>
+        <button
+          type="button"
+          onClick={() => setListOpen((open) => !open)}
+          aria-expanded={listOpen}
+          aria-label={listOpen ? 'Hide track list' : 'Show track list'}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[var(--theme-muted)] transition hover:bg-[var(--theme-soft)] hover:text-[var(--theme-ink)]"
+        >
+          {listOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </button>
+      </div>
 
-              <button
-                onClick={togglePlay}
-                className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full ${colors.bg} text-white flex items-center justify-center shadow-lg hover:shadow-xl transition-all active:scale-95`}
-              >
-                {isPlaying ? <Pause size={20} /> : <Play size={20} className="ml-0.5" />}
-              </button>
+      {/* Transport row */}
+      <div className="flex items-center gap-1 px-3 pb-3 sm:gap-2 sm:px-4">
+        <button
+          type="button"
+          onClick={playPrev}
+          disabled={!hasPrev}
+          aria-label="Previous track"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--theme-ink)] transition hover:bg-[var(--theme-soft)] disabled:cursor-not-allowed disabled:opacity-30"
+        >
+          <SkipBack size={18} />
+        </button>
+        <button
+          type="button"
+          onClick={() => seek(Math.max(0, currentTime - 10))}
+          aria-label="Rewind 10 seconds"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--theme-muted)] transition hover:bg-[var(--theme-soft)] hover:text-[var(--theme-ink)]"
+        >
+          <Rewind size={17} />
+        </button>
 
-              <button
-                onClick={() => seek(Math.min(duration, currentTime + 10))}
-                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                <ChevronRight size={18} />
-              </button>
+        <button
+          type="button"
+          onClick={togglePlay}
+          aria-label={isPlaying ? 'Pause' : 'Play'}
+          className={`flex h-11 w-11 items-center justify-center rounded-full ${colors.bg} text-white shadow-md transition active:scale-95`}
+        >
+          {isPlaying ? <Pause size={20} /> : <Play size={20} className="ml-0.5" />}
+        </button>
 
-              <button
-                onClick={playNext}
-                disabled={!hasNext}
-                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <SkipForward size={18} />
-              </button>
-            </div>
+        <button
+          type="button"
+          onClick={() => seek(Math.min(duration || 0, currentTime + 10))}
+          aria-label="Forward 10 seconds"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--theme-muted)] transition hover:bg-[var(--theme-soft)] hover:text-[var(--theme-ink)]"
+        >
+          <FastForward size={17} />
+        </button>
+        <button
+          type="button"
+          onClick={playNext}
+          disabled={!hasNext}
+          aria-label="Next track"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--theme-ink)] transition hover:bg-[var(--theme-soft)] disabled:cursor-not-allowed disabled:opacity-30"
+        >
+          <SkipForward size={18} />
+        </button>
 
-            {/* Volume + Playlist Toggle */}
-            <div className="flex items-center gap-2">
-              <div className="hidden sm:flex items-center gap-2">
-                <button
-                  onClick={() => setVolume(volume === 0 ? 1 : 0)}
-                  className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  {volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
-                </button>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={volume}
-                  onChange={(e) => setVolume(Number(e.target.value))}
-                  className="w-20 accent-current"
-                />
-              </div>
-
-              <button
-                onClick={() => setShowPlaylist(!showPlaylist)}
-                className="hidden sm:flex p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                <ListMusic size={20} className={showPlaylist ? colors.text : 'text-slate-500'} />
-              </button>
-
-              <button
-                onClick={() => setIsMinimized(true)}
-                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                <X size={18} />
-              </button>
-            </div>
-          </div>
+        <div className="ml-auto hidden items-center gap-2 sm:flex">
+          <button
+            type="button"
+            onClick={() => setVolume(volume === 0 ? 1 : 0)}
+            aria-label={volume === 0 ? 'Unmute' : 'Mute'}
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--theme-muted)] transition hover:bg-[var(--theme-soft)] hover:text-[var(--theme-ink)]"
+          >
+            {volume === 0 ? <VolumeX size={17} /> : <Volume2 size={17} />}
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={volume}
+            aria-label="Volume"
+            onChange={(event) => setVolume(Number(event.target.value))}
+            className={`h-1 w-20 cursor-pointer ${colors.ring}`}
+          />
         </div>
       </div>
 
-      {/* Playlist / Track List */}
-      {showPlaylist && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-          <div className="p-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
-            <h4 className="font-semibold text-sm">Playlist ({tracks.length} tracks)</h4>
-          </div>
-          <div className="max-h-64 overflow-y-auto">
-            {tracks.map((track, idx) => (
-              <button
-                key={track.id}
-                onClick={() => playFromList(track, tracks, idx)}
-                className={`w-full flex items-center gap-3 p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800 last:border-0 ${
-                  currentTrack?.id === track.id ? colors.light : ''
-                }`}
-              >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs shrink-0 ${
-                  currentTrack?.id === track.id ? `${colors.bg} text-white` : 'bg-slate-200 dark:bg-slate-700'
-                }`}>
-                  {currentTrack?.id === track.id && isPlaying ? (
-                    <span className="flex gap-0.5">
-                      <span className="w-0.5 h-3 bg-white animate-pulse" />
-                      <span className="w-0.5 h-3 bg-white animate-pulse delay-75" />
-                      <span className="w-0.5 h-3 bg-white animate-pulse delay-150" />
+      {listOpen && (
+        <div className="border-t border-[var(--theme-border)]">
+          <p className="px-3 pb-1 pt-3 text-[11px] font-bold uppercase tracking-wider text-[var(--theme-muted)] sm:px-4">
+            <ListMusic size={13} className="mr-1 inline align-[-2px]" />
+            {tracks.length} track{tracks.length === 1 ? '' : 's'} in this list
+          </p>
+          <div ref={listRef} className="max-h-56 overflow-y-auto overscroll-contain px-2 pb-2 sm:max-h-72 sm:px-3 sm:pb-3">
+            {/* Vertical single column on phones, two columns from sm up */}
+            <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 sm:gap-1.5">
+              {tracks.map((track, index) => {
+                const isCurrent = track.id === currentTrack.id
+                return (
+                  <button
+                    key={track.id}
+                    type="button"
+                    data-playing={isCurrent}
+                    onClick={() => playFromList(track, tracks, index)}
+                    className={`flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition ${
+                      isCurrent ? colors.soft : 'hover:bg-[var(--theme-soft)]'
+                    }`}
+                  >
+                    <span
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold tabular-nums ${
+                        isCurrent ? `${colors.bg} text-white` : 'bg-[var(--theme-soft)] text-[var(--theme-muted)]'
+                      }`}
+                    >
+                      {isCurrent && isPlaying ? (
+                        <span className="flex gap-0.5" aria-hidden="true">
+                          <span className="h-3 w-0.5 animate-pulse bg-white" />
+                          <span className="h-3 w-0.5 animate-pulse bg-white [animation-delay:120ms]" />
+                          <span className="h-3 w-0.5 animate-pulse bg-white [animation-delay:240ms]" />
+                        </span>
+                      ) : (
+                        index + 1
+                      )}
                     </span>
-                  ) : (
-                    idx + 1
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium truncate ${currentTrack?.id === track.id ? colors.text : 'text-slate-900 dark:text-slate-100'}`}>
-                    {track.title}
-                  </p>
-                  <p className="text-xs text-slate-500 truncate">{track.reciter}</p>
-                </div>
-                {track.duration && (
-                  <span className="text-xs text-slate-400 tabular-nums">{formatDuration(track.duration)}</span>
-                )}
-              </button>
-            ))}
+                    <span className="min-w-0 flex-1">
+                      <span className={`block truncate text-[13px] font-semibold ${isCurrent ? colors.text : 'text-[var(--theme-ink)]'}`}>
+                        {track.title}
+                      </span>
+                      <span className="block truncate text-[11px] text-[var(--theme-muted)]">{track.reciter}</span>
+                    </span>
+                    {track.duration ? (
+                      <span className="shrink-0 text-[11px] tabular-nums text-[var(--theme-muted)]">
+                        {formatDuration(track.duration)}
+                      </span>
+                    ) : null}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
       )}

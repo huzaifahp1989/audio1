@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react'
-import { Hand, Search, ChevronDown, FileText, X, Play, Pause, Eye } from 'lucide-react'
+import { Hand, FileText, X, Play, Pause, Eye } from 'lucide-react'
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
 import CategoryUploadPanel from '../components/CategoryUploadPanel'
+import CategoryHero from '../components/CategoryHero'
+import CategoryChips from '../components/CategoryChips'
+import CategoryPlayerDock from '../components/CategoryPlayerDock'
 import { DUA_CATEGORIES } from '../constants/categories'
 import type { AudioTrack } from '../types'
 import { useAudioPlayer } from '../context/AudioPlayerContext'
@@ -15,7 +18,6 @@ export default function DuaPage() {
   const allTracks = tracks.filter((t) => t.category === 'dua')
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
-  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
   const [selectedTrack, setSelectedTrack] = useState<AudioTrack | null>(null)
 
   useEffect(() => {
@@ -51,110 +53,46 @@ export default function DuaPage() {
 
   const selectedCategoryLabel = DUA_CATEGORIES.find(c => c.id === selectedCategory)
 
+  const categoryChips = [
+    { id: 'all', label: 'All Categories', emoji: '📋', count: allTracks.length },
+    ...DUA_CATEGORIES.map((cat) => ({
+      id: cat.id,
+      label: cat.label,
+      emoji: cat.emoji,
+      count: allTracks.filter((t) => t.topic === cat.id).length,
+    })),
+  ]
+
   // Calculate total views
   const totalViews = allTracks.reduce((sum, t) => sum + (t.views || 0), 0)
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
-      <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-teal-100 flex items-center justify-center shadow-sm">
-            <Hand size={22} className="text-teal-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">Dua & Adhkar</h1>
-            <p className="text-slate-500 text-sm mt-0.5">
-              {allTracks.length} dua{allTracks.length !== 1 ? 's' : ''} · {' '}
-              <span className="inline-flex items-center gap-1">
-                <Eye size={12} />
-                {formatViews(totalViews)}
-              </span>
-            </p>
-          </div>
-        </div>
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search duas..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="bg-white border border-slate-200 text-slate-800 placeholder-slate-400 pl-9 pr-4 py-2 rounded-xl text-sm focus:outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-100 w-56 shadow-sm"
-          />
-        </div>
-      </div>
+      <CategoryHero
+        icon={<Hand size={13} />}
+        badge="Dua & Adhkar"
+        title="Dua & Adhkar"
+        description="Everyday supplications and remembrances, organised by occasion."
+        gradient="from-teal-600 via-emerald-600 to-teal-700"
+        itemCount={allTracks.length}
+        itemNoun="dua"
+        totalPlays={totalViews}
+        search={{ value: search, onChange: setSearch, placeholder: 'Search duas...' }}
+      />
 
       <CategoryUploadPanel category="dua" className="mb-8" />
 
-      {/* Filters Row */}
-      <div className="flex flex-wrap items-center gap-4 mb-8">
-        {/* Category Dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:border-teal-300 hover:bg-teal-50 transition-all min-w-[180px]"
-          >
-            <span>{selectedCategory === 'all' ? '📋 All Categories' : `${selectedCategoryLabel?.emoji} ${selectedCategoryLabel?.label}`}</span>
-            <ChevronDown size={16} className={`ml-auto transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
-          </button>
-          
-          {showCategoryDropdown && (
-            <div className="absolute top-full left-0 mt-2 w-72 bg-white border border-slate-200 rounded-xl shadow-xl z-20 max-h-80 overflow-y-auto">
-              <div className="p-2">
-                <button
-                  onClick={() => { setSelectedCategory('all'); setShowCategoryDropdown(false) }}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                    selectedCategory === 'all' ? 'bg-teal-100 text-teal-700' : 'hover:bg-slate-50 text-slate-700'
-                  }`}
-                >
-                  <span>📋</span>
-                  <span className="flex-1 text-left">All Categories</span>
-                </button>
-                
-                {DUA_CATEGORIES.map((cat) => {
-                  const count = allTracks.filter((t) => t.topic === cat.id).length
-                  return (
-                    <button
-                      key={cat.id}
-                      onClick={() => { setSelectedCategory(cat.id); setShowCategoryDropdown(false) }}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                        selectedCategory === cat.id ? 'bg-teal-100 text-teal-700' : 'hover:bg-slate-50 text-slate-700'
-                      }`}
-                    >
-                      <span>{cat.emoji}</span>
-                      <span className="flex-1 text-left truncate">{cat.label}</span>
-                      {count > 0 && (
-                        <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{count}</span>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+      <CategoryPlayerDock tracks={filtered} variant="emerald" className="mb-6 sm:mb-8" />
 
-        {/* Clear filters */}
-        {selectedCategory !== 'all' && (
-          <button
-            onClick={() => { setSelectedCategory('all') }}
-            className="text-sm text-slate-500 hover:text-teal-600 underline"
-          >
-            Clear filters
-          </button>
-        )}
-      </div>
-
-      {/* Active filters display */}
-      {selectedCategory !== 'all' && (
-        <div className="flex flex-wrap gap-2 mb-6">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-teal-100 text-teal-700 rounded-full text-sm">
-            <span>{selectedCategoryLabel?.emoji}</span>
-            <span>{selectedCategoryLabel?.label}</span>
-            <button onClick={() => setSelectedCategory('all')} className="hover:text-teal-900">×</button>
-          </span>
-        </div>
-      )}
+      <section className="mb-8">
+        <CategoryChips
+          label="Category"
+          options={categoryChips}
+          value={selectedCategory}
+          onChange={setSelectedCategory}
+          activeClass="bg-teal-600 text-white border-teal-600"
+        />
+      </section>
 
       {/* Text Content Modal */}
       {selectedTrack && (

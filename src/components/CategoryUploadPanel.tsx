@@ -1,10 +1,12 @@
 import React, { useRef, useState } from 'react'
 
-import { Upload, ChevronDown, ChevronUp, CheckCircle, AlertCircle } from 'lucide-react'
+import { Upload, ChevronDown, ChevronUp, CheckCircle, AlertCircle, LogIn } from 'lucide-react'
 
 import { addDoc, collection } from 'firebase/firestore'
 
 import { useAuth } from '../context/AuthContext'
+
+import { useAuthModal } from '../context/AuthModalContext'
 
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
 
@@ -164,6 +166,8 @@ export default function CategoryUploadPanel({ category, className = '' }: Catego
 
   const { user, profile, loading: authLoading } = useAuth()
 
+  const { openAuthModal } = useAuthModal()
+
   const { uploadTrack, uploading, uploadError } = useAudioLibrary()
 
   const fileRef = useRef<HTMLInputElement>(null)
@@ -187,7 +191,57 @@ export default function CategoryUploadPanel({ category, className = '' }: Catego
 
 
 
-  if (authLoading || !user) return null
+  if (authLoading) return null
+
+  if (!user) {
+
+    return (
+
+      <div className={`rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50 to-amber-50 p-4 sm:p-5 ${className}`}>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+          <div className="flex items-start gap-3 min-w-0">
+
+            <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-sm shrink-0">
+
+              <Upload size={18} className="text-teal-700" />
+
+            </div>
+
+            <div className="min-w-0">
+
+              <p className="text-sm font-bold text-slate-800">Add audio to this page</p>
+
+              <p className="text-xs text-slate-600">
+                Create a free account to upload tracks. Signing up takes a few seconds.
+              </p>
+
+            </div>
+
+          </div>
+
+          <button
+
+            type="button"
+
+            onClick={() => openAuthModal('signup')}
+
+            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-amber-600 px-4 text-sm font-semibold text-white shadow-sm hover:opacity-95"
+
+          >
+
+            <LogIn size={16} /> Sign up to upload
+
+          </button>
+
+        </div>
+
+      </div>
+
+    )
+
+  }
 
 
 

@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react'
-import { Scroll, Search, ChevronDown, FileText, X, Eye } from 'lucide-react'
+import { Scroll, FileText, X } from 'lucide-react'
 import { useAudioLibrary } from '../hooks/useAudioLibrary'
 import TrackList from '../components/TrackList'
 import CategoryUploadPanel from '../components/CategoryUploadPanel'
+import CategoryHero from '../components/CategoryHero'
+import CategoryChips from '../components/CategoryChips'
+import CategoryPlayerDock from '../components/CategoryPlayerDock'
 import { HADITH_NARRATORS } from '../constants/categories'
 import type { AudioTrack } from '../types'
-import { formatViews } from '../lib/views'
 
 function isHadithTrack(track: AudioTrack): boolean {
   if (track.category === 'hadith') return true
@@ -18,7 +20,6 @@ export default function HadithPage() {
   const allTracks = tracks.filter(isHadithTrack)
   const [search, setSearch] = useState('')
   const [selectedNarrator, setSelectedNarrator] = useState<string>('all')
-  const [showNarratorDropdown, setShowNarratorDropdown] = useState(false)
   const [selectedTrack, setSelectedTrack] = useState<AudioTrack | null>(null)
 
   useEffect(() => {
@@ -42,6 +43,16 @@ export default function HadithPage() {
   const trackNarrators = [...new Set(allTracks.map((t) => t.reciter))]
   const allNarrators = [...new Set([...HADITH_NARRATORS.filter(n => n !== 'Other'), ...trackNarrators])].sort()
 
+  const narratorChips = [
+    { id: 'all', label: 'All Collections', emoji: '📚', count: allTracks.length },
+    ...allNarrators.map((narrator) => ({
+      id: narrator,
+      label: narrator,
+      emoji: '📜',
+      count: allTracks.filter((t) => t.reciter === narrator).length,
+    })),
+  ]
+
   const filtered = allTracks.filter((t) => {
     const matchesSearch = search
       ? t.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -56,110 +67,33 @@ export default function HadithPage() {
     return matchesSearch && matchesNarrator
   })
 
-  // Calculate total views
-  const totalViews = allTracks.reduce((sum, t) => sum + (t.views || 0), 0)
-
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
-      <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center shadow-sm">
-            <Scroll size={22} className="text-emerald-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">Hadith Collection</h1>
-            <p className="text-slate-500 text-sm mt-0.5">
-              {allTracks.length} hadith{allTracks.length !== 1 ? 's' : ''} · {' '}
-              <span className="inline-flex items-center gap-1">
-                <Eye size={12} />
-                {formatViews(totalViews)}
-              </span>
-            </p>
-          </div>
-        </div>
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search hadith..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="bg-white border border-slate-200 text-slate-800 placeholder-slate-400 pl-9 pr-4 py-2 rounded-xl text-sm focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 w-56 shadow-sm"
-          />
-        </div>
-      </div>
+      <CategoryHero
+        icon={<Scroll size={13} />}
+        badge="Hadith Library"
+        title="Hadith Collection"
+        description="Authentic narrations from the major collections, ready to listen and read."
+        gradient="from-emerald-600 via-teal-600 to-emerald-700"
+        itemCount={allTracks.length}
+        itemNoun="hadith"
+        totalPlays={allTracks.reduce((sum, t) => sum + (t.views || 0), 0)}
+        search={{ value: search, onChange: setSearch, placeholder: 'Search hadith...' }}
+      />
 
       <CategoryUploadPanel category="hadith" className="mb-8" />
 
-      {/* Filters Row */}
-      <div className="flex flex-wrap items-center gap-4 mb-8">
-        {/* Narrator Dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setShowNarratorDropdown(!showNarratorDropdown)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:border-emerald-300 hover:bg-emerald-50 transition-all min-w-[180px]"
-          >
-            <span>📜 {selectedNarrator === 'all' ? 'All Collections' : selectedNarrator}</span>
-            <ChevronDown size={16} className={`ml-auto transition-transform ${showNarratorDropdown ? 'rotate-180' : ''}`} />
-          </button>
-          
-          {showNarratorDropdown && (
-            <div className="absolute top-full left-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-20 max-h-80 overflow-y-auto">
-              <div className="p-2">
-                <button
-                  onClick={() => { setSelectedNarrator('all'); setShowNarratorDropdown(false) }}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                    selectedNarrator === 'all' ? 'bg-emerald-100 text-emerald-700' : 'hover:bg-slate-50 text-slate-700'
-                  }`}
-                >
-                  <span>📚</span>
-                  <span className="flex-1 text-left">All Collections</span>
-                </button>
-                
-                {allNarrators.map((narrator) => {
-                  const count = allTracks.filter((t) => t.reciter === narrator).length
-                  return (
-                    <button
-                      key={narrator}
-                      onClick={() => { setSelectedNarrator(narrator); setShowNarratorDropdown(false) }}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                        selectedNarrator === narrator ? 'bg-emerald-100 text-emerald-700' : 'hover:bg-slate-50 text-slate-700'
-                      }`}
-                    >
-                      <span>📜</span>
-                      <span className="flex-1 text-left truncate">{narrator}</span>
-                      {count > 0 && (
-                        <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{count}</span>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+      <CategoryPlayerDock tracks={filtered} variant="emerald" className="mb-6 sm:mb-8" />
 
-        {/* Clear filters */}
-        {selectedNarrator !== 'all' && (
-          <button
-            onClick={() => { setSelectedNarrator('all') }}
-            className="text-sm text-slate-500 hover:text-emerald-600 underline"
-          >
-            Clear filters
-          </button>
-        )}
-      </div>
-
-      {/* Active filters display */}
-      {selectedNarrator !== 'all' && (
-        <div className="flex flex-wrap gap-2 mb-6">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm">
-            <span>📜</span>
-            <span>{selectedNarrator}</span>
-            <button onClick={() => setSelectedNarrator('all')} className="hover:text-emerald-900">×</button>
-          </span>
-        </div>
-      )}
+      <section className="mb-8">
+        <CategoryChips
+          label="Collection"
+          options={narratorChips}
+          value={selectedNarrator}
+          onChange={setSelectedNarrator}
+          activeClass="bg-emerald-600 text-white border-emerald-600"
+        />
+      </section>
 
       {/* Text Content Modal */}
       {selectedTrack && (

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Music2, ChevronDown, Heart, Upload, Sparkles, ListMusic, FolderOpen, Compass, X } from 'lucide-react'
 import { useFavorites } from '../context/FavoritesContext'
@@ -36,6 +36,22 @@ export default function NasheedsPage() {
   const [selectedArtist, setSelectedArtist] = useState<string>('All')
   const [selectedCategory, setSelectedCategory] = useState<NasheedLanguageCategory>('all')
   const [sort, setSort] = useState<SortOption>('newest')
+
+  const listRef = useRef<HTMLElement>(null)
+  // Bumped on every artist pick so the effect below scrolls once the list has
+  // been re-rendered (revealing the active grid card changes the layout height).
+  const [scrollSignal, setScrollSignal] = useState(0)
+
+  useLayoutEffect(() => {
+    if (!scrollSignal) return
+    listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [scrollSignal])
+
+  /** Any artist pick — dropdown or grid card — scrolls straight to the tracks. */
+  const changeArtist = useCallback((name: string) => {
+    setSelectedArtist(name)
+    setScrollSignal((n) => n + 1)
+  }, [])
 
   const artistOptions = useMemo(
     () => buildContributorOptions(allTracks, NASHEED_ARTISTS),
@@ -156,7 +172,7 @@ export default function NasheedsPage() {
               <select
                 id="nasheed-artist"
                 value={selectedArtist}
-                onChange={(e) => setSelectedArtist(e.target.value)}
+                onChange={(e) => changeArtist(e.target.value)}
                 className="w-full appearance-none rounded-xl border border-[var(--theme-border)] bg-[var(--theme-surface-2)] py-2.5 pl-4 pr-10 text-sm font-semibold text-[var(--theme-ink)] shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
               >
                 {artistOptions.map((artist) => {
@@ -180,12 +196,12 @@ export default function NasheedsPage() {
         label="Artists"
         items={artistSummaries}
         selected={selectedArtist}
-        onSelect={setSelectedArtist}
+        onSelect={changeArtist}
         activeClass="border-blue-600 bg-blue-600 text-white"
         className="mb-5 sm:mb-6"
       />
 
-      <section>
+      <section ref={listRef} className="scroll-mt-32 sm:scroll-mt-24">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-0.5">
           <h2 className="text-sm font-bold text-[var(--theme-ink)]">{listTitle}</h2>
           <div className="flex items-center gap-2">

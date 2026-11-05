@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Mic2, ChevronDown, Heart, Upload, Sparkles, X } from 'lucide-react'
 import { useFavorites } from '../context/FavoritesContext'
@@ -44,6 +44,23 @@ export default function TalksPage() {
   const [selectedSpeaker, setSelectedSpeaker] = useState('All')
   const [selectedSeries, setSelectedSeries] = useState('All')
   const [sort, setSort] = useState<SortOption>('newest')
+
+  const listRef = useRef<HTMLElement>(null)
+  // Bumped on every speaker pick so the effect below scrolls once the list has
+  // been re-rendered (revealing the active grid card changes the layout height).
+  const [scrollSignal, setScrollSignal] = useState(0)
+
+  useLayoutEffect(() => {
+    if (!scrollSignal) return
+    listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [scrollSignal])
+
+  /** Any speaker pick — dropdown or grid card — scrolls straight to the tracks. */
+  const changeSpeaker = useCallback((name: string) => {
+    setSelectedSpeaker(name)
+    setSelectedTopic('All')
+    setScrollSignal((n) => n + 1)
+  }, [])
 
   const speakerOptions = useMemo(
     () => buildContributorOptions(allTracks, TALKS_SPEAKERS),
@@ -237,10 +254,7 @@ export default function TalksPage() {
                 <select
                   id="talk-speaker"
                   value={selectedSpeaker}
-                  onChange={(e) => {
-                    setSelectedSpeaker(e.target.value)
-                    setSelectedTopic('All')
-                  }}
+                  onChange={(e) => changeSpeaker(e.target.value)}
                   className="w-full appearance-none rounded-xl border border-[var(--theme-border)] bg-[var(--theme-surface-2)] py-2.5 pl-4 pr-10 text-sm font-semibold text-[var(--theme-ink)] shadow-sm focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100"
                 >
                   {speakerOptions.map((speaker) => {
@@ -266,16 +280,13 @@ export default function TalksPage() {
           label="Speakers"
           items={speakerSummaries}
           selected={selectedSpeaker}
-          onSelect={(name) => {
-            setSelectedSpeaker(name)
-            setSelectedTopic('All')
-          }}
+          onSelect={changeSpeaker}
           activeClass="border-sky-600 bg-sky-600 text-white"
           className="mb-5 sm:mb-6"
         />
       )}
 
-      <section>
+      <section ref={listRef} className="scroll-mt-32 sm:scroll-mt-24">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-0.5">
           <h2 className="text-sm font-bold text-[var(--theme-ink)]">{listTitle}</h2>
           <div className="flex items-center gap-2">

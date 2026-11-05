@@ -1,6 +1,20 @@
 import type { AudioCategory } from '../types'
+import { normalizeContributor } from '../lib/contributorMatch'
 
 export const UNCATEGORIZED_CATEGORY = 'uncategorized' as const
+
+/**
+ * Contributors whose tracks are hidden from the public library (e.g. after a
+ * moderation decision). The audio records stay in Firestore, so removing a name
+ * from this list restores them.
+ */
+export const HIDDEN_CONTRIBUTORS = ['Bilal Philips']
+
+export function isHiddenContributor(name: string | undefined): boolean {
+  if (!name?.trim()) return false
+  const key = normalizeContributor(name)
+  return HIDDEN_CONTRIBUTORS.some((hidden) => normalizeContributor(hidden) === key)
+}
 
 export const QURAN_RECITERS = [
   'Mishary Rashid Alafasy',
@@ -183,7 +197,6 @@ export const TALKS_SPEAKERS = [
   'Nouman Ali Khan',
   'Omar Suleiman',
   'Yasir Qadhi',
-  'Bilal Philips',
   'Yasmin Mogahed',
   'Molana Tariq Jameel',
   'Molana Anas Younus',

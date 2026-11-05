@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from 'react'
 import type { AudioTrack, AudioCategory } from '../types'
 import {
   uploadAudioToCloud,
@@ -11,6 +11,7 @@ import {
 import { normalizeAudioFileForPlayback, trimSilenceFromFile } from '../lib/audioProcessing'
 import { subscribeToVotes } from '../lib/votes'
 import { trackEvent } from '../lib/analytics'
+import { isHiddenContributor } from '../constants/categories'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 export interface BulkUploadItem {
@@ -247,8 +248,15 @@ export function AudioLibraryProvider({ children }: { children: ReactNode }) {
     ))
   }, [])
 
+  // Hidden contributors are filtered here so every page — lists, search,
+  // playlists, speaker profiles — stays consistent without per-page checks.
+  const visibleTracks = useMemo(
+    () => tracks.filter((t) => !isHiddenContributor(t.reciter)),
+    [tracks]
+  )
+
   return (
-    <AudioLibraryContext.Provider value={{ tracks, loading, uploading, uploadError, refresh, uploadTrack, importTrackFromUrl, bulkUpload, deleteTrackById, editTrack, getByCategory, incrementTrackView, updateTrackVote }}>
+    <AudioLibraryContext.Provider value={{ tracks: visibleTracks, loading, uploading, uploadError, refresh, uploadTrack, importTrackFromUrl, bulkUpload, deleteTrackById, editTrack, getByCategory, incrementTrackView, updateTrackVote }}>
       {children}
     </AudioLibraryContext.Provider>
   )

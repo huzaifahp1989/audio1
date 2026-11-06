@@ -31,3 +31,15 @@ tmp/
 
 .vercel-data/
 .vercel-data
+
+# Tooling / workspace metadata
+.trae/
+.verdent/
+
+# Native Android wrapper and its signing material (never commit keystores)
+android/
+*.jks
+keystore.properties
+
+# Release artifacts
+*.apk

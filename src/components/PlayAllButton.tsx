@@ -10,6 +10,8 @@ interface PlayAllButtonProps {
   className?: string
   allowSponsoredBreaks?: boolean
   defaultSponsoredBreakFrequency?: SponsoredBreakFrequency | null
+  /** Tailwind gradient stops; defaults to the sky/cyan accent. */
+  gradient?: string
 }
 
 export default function PlayAllButton({
@@ -18,6 +20,7 @@ export default function PlayAllButton({
   className = '',
   allowSponsoredBreaks = false,
   defaultSponsoredBreakFrequency = 4,
+  gradient = 'from-sky-600 to-cyan-600',
 }: PlayAllButtonProps) {
   const { playFromList } = useAudioPlayer()
   const [sponsoredBreakFrequency, setSponsoredBreakFrequency] = React.useState<SponsoredBreakFrequency | null>(defaultSponsoredBreakFrequency)
@@ -51,7 +54,7 @@ export default function PlayAllButton({
       <button
         type="button"
         onClick={handlePlayAll}
-        className={`inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:brightness-105 active:scale-[0.98] ${className}`}
+        className={`inline-flex items-center gap-2 rounded-xl bg-gradient-to-r ${gradient} px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:brightness-105 active:scale-[0.98] ${className}`}
       >
         <Play size={16} className="ml-0.5" />
         {label} ({tracks.length})

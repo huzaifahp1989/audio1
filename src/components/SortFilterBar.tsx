@@ -8,9 +8,13 @@ interface SortFilterBarProps {
   count?: number
   label?: string
   compact?: boolean
+  /** Limits the dropdown to a subset of sorts. Defaults to every option. */
+  options?: SortOption[]
 }
 
-export default function SortFilterBar({ sort, onSortChange, count, label = 'tracks', compact = false }: SortFilterBarProps) {
+export default function SortFilterBar({ sort, onSortChange, count, label = 'tracks', compact = false, options }: SortFilterBarProps) {
+  const sortOptions = options ?? (Object.keys(SORT_LABELS) as SortOption[])
+
   return (
     <div className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-surface-2)] ${compact ? 'px-2.5 py-1.5' : 'px-3 py-2'}`}>
       {count !== undefined && (
@@ -26,7 +30,7 @@ export default function SortFilterBar({ sort, onSortChange, count, label = 'trac
           onChange={(e) => onSortChange(e.target.value as SortOption)}
           className={`rounded-lg border border-[var(--theme-border)] bg-[var(--theme-surface)] ${compact ? 'px-2 py-1 text-[11px]' : 'px-2 py-1.5 text-xs'} font-medium text-[var(--theme-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--theme-brand)]/30`}
         >
-          {(Object.keys(SORT_LABELS) as SortOption[]).map((key) => (
+          {sortOptions.map((key) => (
             <option key={key} value={key}>{SORT_LABELS[key]}</option>
           ))}
         </select>
